@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Rubik's Cube</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // シーン、カメラ、レンダラーのセットアップ
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 3x3ルービックキューブの作成
+        const cubeSize = 1;
+        const gap = 0.1;
+        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
+
+        const cubes = [];
+        const cubesGroup = new THREE.Group();
+
+        function createCube(x, y, z) {
+            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+            const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+            const cube = new THREE.Mesh(geometry, materials);
+            cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
+            scene.add(cube);
+            cubes.push(cube);
+            return cube;
+        }
+
+        for (let x = 0; x < 3; x++) {
+            for (let y = 0; y < 3; y++) {
+                for (let z = 0; z < 3; z++) {
+                    createCube(x - 1, y - 1, z - 1);
+                }
+            }
+        }
+
+        scene.add(cubesGroup);
+
+        camera.position.z = 5;
+
+        // 回転機能の追加
+        let isDragging = false;
+        let startX, startY;
+
+        function rotateLayer(axis, index, angle) {
+            cubes.forEach(cube => {
+                if (Math.round(cube.position[axis]) === index) {
+                    const rotation = new THREE.Quaternion();
+                    rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
+                    cube.applyQuaternion(rotation);
+                }
+            });
+        }
+
+        window.addEventListener('mousedown', (event) => {
+            isDragging = true;
+            startX = event.clientX;
+            startY = event.clientY;
+        });
+
+        window.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                const deltaX = event.clientX - startX;
+                const deltaY = event.clientY - startY;
+
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    rotateLayer('y', 0, deltaX * 0.01);
+                } else {
+                    rotateLayer('x', 0, deltaY * 0.01);
+                }
+
+                startX = event.clientX;
+                startY = event.clientY;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        window.addEventListener('touchstart', (event) => {
+            isDragging = true;
+            startX = event.touches[0].clientX;
+            startY = event.touches[0].clientY;
+        });
+
+        window.addEventListener('touchmove', (event) => {
+            if (isDragging) {
+                const deltaX = event.touches[0].clientX - startX;
+                const deltaY = event.touches[0].clientY - startY;
+
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    rotateLayer('y', 0, deltaX * 0.01);
+                } else {
+                    rotateLayer('x', 0, deltaY * 0.01);
+                }
+
+                startX = event.touches[0].clientX;
+                startY = event.touches[0].clientY;
+            }
+        });
+
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // ウィンドウリサイズ対応
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
