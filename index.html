@@ -1,15 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive 3D Rubik's Cube</title>
+    <title>インタラクティブ3Dルービックキューブ</title>
     <style>
         body { margin: 0; }
         canvas { display: block; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            color: #fff;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #555;
+        }
     </style>
 </head>
 <body>
+    <div id="controls">
+        <button id="rotateX">X軸回転</button>
+        <button id="rotateY">Y軸回転</button>
+        <button id="rotateZ">Z軸回転</button>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // シーン、カメラ、レンダラーのセットアップ
@@ -49,7 +73,7 @@
 
         camera.position.z = 5;
 
-        // 回転機能の追加
+        // 回転機能
         let isDragging = false;
         let startX, startY;
 
@@ -61,6 +85,12 @@
                     cube.applyQuaternion(rotation);
                 }
             });
+        }
+
+        function rotateView(axis, angle) {
+            const rotation = new THREE.Quaternion();
+            rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
+            camera.quaternion.premultiply(rotation);
         }
 
         window.addEventListener('mousedown', (event) => {
@@ -113,6 +143,18 @@
 
         window.addEventListener('touchend', () => {
             isDragging = false;
+        });
+
+        document.getElementById('rotateX').addEventListener('click', () => {
+            rotateView('x', Math.PI / 8);
+        });
+
+        document.getElementById('rotateY').addEventListener('click', () => {
+            rotateView('y', Math.PI / 8);
+        });
+
+        document.getElementById('rotateZ').addEventListener('click', () => {
+            rotateView('z', Math.PI / 8);
         });
 
         // アニメーションループ
