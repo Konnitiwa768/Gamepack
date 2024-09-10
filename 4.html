@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dギアキューブ</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            color: #fff;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button id="rotateLayerX">X方向層回転</button>
+        <button id="rotateLayerY">Y方向層回転</button>
+        <button id="rotateLayerZ">Z方向層回転</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // シーン、カメラ、レンダラーのセットアップ
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 3x3x3ギアキューブの作成
+        const cubeSize = 1;
+        const gap = 0.1;
+        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
+        const cubes = [];
+        const cubeGroup = new THREE.Group();
+
+        function createGearCube(x, y, z) {
+            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+            const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+            const cube = new THREE.Mesh(geometry, materials);
+            cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
+            cube.userData = { x, y, z }; // 各キューブの位置を保存
+            cubeGroup.add(cube);
+            cubes.push(cube);
+        }
+
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    createGearCube(x, y, z);
+                }
+            }
+        }
+
+        scene.add(cubeGroup);
+        camera.position.z = 6;
+
+        function rotateLayer(axis, index, angle) {
+            const rotation = new THREE.Quaternion();
+            rotation.setFromAxisAngle(new THREE.Vector3(
+                axis === 'x' ? 1 : 0,
+                axis === 'y' ? 1 : 0,
+                axis === 'z' ? 1 : 0
+            ), angle);
+
+            // ギアの連動処理
+            cubeGroup.children.forEach(cube => {
+                if (Math.round(cube.position[axis]) === index) {
+                    cube.applyQuaternion(rotation);
+                    // 隣接層の連動処理を追加する場合
+                    // 例えば、隣接する層も回転させるなど
+                }
+            });
+        }
+
+        document.getElementById('rotateLayerX').addEventListener('click', () => {
+            rotateLayer('x', 0, Math.PI / 8); // X方向の層を回転
+        });
+
+        document.getElementById('rotateLayerY').addEventListener('click', () => {
+            rotateLayer('y', 0, Math.PI / 8); // Y方向の層を回転
+        });
+
+        document.getElementById('rotateLayerZ').addEventListener('click', () => {
+            rotateLayer('z', 0, Math.PI / 8); // Z方向の層を回転
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
