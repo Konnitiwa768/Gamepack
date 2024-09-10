@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ギア付き3Dキューブシミュレーター</title>
+    <title>ギア付き3Dキューブ</title> <!-- タイトルを修正 -->
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -43,6 +43,7 @@
         <button id="rotateLayerX">X方向層回転</button>
         <button id="rotateLayerY">Y方向層回転</button>
         <button id="rotateLayerZ">Z方向層回転</button>
+        <button id="resetCube">揃える</button> <!-- 揃えるボタンを追加 -->
     </div>
     <div id="sliders">
         <label>X軸回転: <input type="range" id="sliderX" min="-180" max="180" value="0"></label>
@@ -52,30 +53,26 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // シーン、カメラ、レンダラーのセットアップ
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // ギアキューブの設定
         const gearSize = 1;
         const gap = 0.2;
-        const gearTeethCount = 12; // ギアの歯の数
+        const gearTeethCount = 12;
         const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
         const gears = [];
         const gearGroup = new THREE.Group();
 
-        // ギアの作成関数
         function createGear(radius, thickness, teeth, x, y, z) {
             const gearGroup = new THREE.Group();
             const base = new THREE.CylinderGeometry(radius, radius, thickness, 32);
             const baseMesh = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)] }));
-            baseMesh.rotation.x = Math.PI / 2; // 水平配置
+            baseMesh.rotation.x = Math.PI / 2;
             gearGroup.add(baseMesh);
 
-            // ギアの歯の作成
             for (let i = 0; i < teeth; i++) {
                 const tooth = new THREE.BoxGeometry(0.2, 0.1, 0.1);
                 const toothMesh = new THREE.Mesh(tooth, new THREE.MeshBasicMaterial({ color: 0xaaaaaa }));
@@ -89,7 +86,6 @@
             return gearGroup;
         }
 
-        // ギアキューブのパーツを作成して配置
         for (let x = -1; x <= 1; x++) {
             for (let y = -1; y <= 1; y++) {
                 for (let z = -1; z <= 1; z++) {
@@ -103,7 +99,6 @@
         scene.add(gearGroup);
         camera.position.z = 8;
 
-        // 回転関数：層ごとのギアの回転を設定
         function rotateLayer(axis, index, angle) {
             gearGroup.children.forEach(gear => {
                 const pos = gear.position[axis];
@@ -118,48 +113,41 @@
             });
         }
 
-        // スライダーで視点回転を制御
         const sliderX = document.getElementById('sliderX');
         const sliderY = document.getElementById('sliderY');
         const sliderZ = document.getElementById('sliderZ');
 
-        sliderX.addEventListener('input', () => {
-            updateCameraRotation();
-        });
-        sliderY.addEventListener('input', () => {
-            updateCameraRotation();
-        });
-        sliderZ.addEventListener('input', () => {
-            updateCameraRotation();
-        });
+        sliderX.addEventListener('input', updateCameraRotation);
+        sliderY.addEventListener('input', updateCameraRotation);
+        sliderZ.addEventListener('input', updateCameraRotation);
 
         function updateCameraRotation() {
             const rotationX = THREE.Math.degToRad(sliderX.value);
             const rotationY = THREE.Math.degToRad(sliderY.value);
             const rotationZ = THREE.Math.degToRad(sliderZ.value);
-
             camera.rotation.set(rotationX, rotationY, rotationZ);
         }
 
-        // ボタンのイベントリスナー
         document.getElementById('rotateLayerX').addEventListener('click', () => {
-            rotateLayer('x', 0, Math.PI / 8);
+            rotateLayer('x', 0, Math.PI); // 180度回転
         });
         document.getElementById('rotateLayerY').addEventListener('click', () => {
-            rotateLayer('y', 0, Math.PI / 8);
+            rotateLayer('y', 0, Math.PI); // 180度回転
         });
         document.getElementById('rotateLayerZ').addEventListener('click', () => {
-            rotateLayer('z', 0, Math.PI / 8);
+            rotateLayer('z', 0, Math.PI); // 180度回転
         });
 
-        // アニメーションループ
+        document.getElementById('resetCube').addEventListener('click', () => {
+            gearGroup.rotation.set(0, 0, 0); // ギアの位置をリセット
+        });
+
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
         animate();
 
-        // ウィンドウのリサイズ対応
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
