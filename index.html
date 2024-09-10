@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>インタラクティブ3Dルービックキューブ</title>
     <style>
-        body { margin: 0; }
+        body { margin: 0; overflow: hidden; }
         canvas { display: block; }
         #controls {
             position: absolute;
@@ -32,6 +32,9 @@
         <button id="rotateX">X軸回転</button>
         <button id="rotateY">Y軸回転</button>
         <button id="rotateZ">Z軸回転</button>
+        <button id="rotateLayerX">X方向層回転</button>
+        <button id="rotateLayerY">Y方向層回転</button>
+        <button id="rotateLayerZ">Z方向層回転</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -43,42 +46,35 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 3x3ルービックキューブの作成
+        // 3x3x3ルービックキューブの作成
         const cubeSize = 1;
         const gap = 0.1;
         const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
-
         const cubes = [];
-        const cubesGroup = new THREE.Group();
+        const cubeGroup = new THREE.Group();
 
         function createCube(x, y, z) {
             const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
             const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
             const cube = new THREE.Mesh(geometry, materials);
             cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
-            scene.add(cube);
+            cubeGroup.add(cube);
             cubes.push(cube);
-            return cube;
         }
 
-        for (let x = 0; x < 3; x++) {
-            for (let y = 0; y < 3; y++) {
-                for (let z = 0; z < 3; z++) {
-                    createCube(x - 1, y - 1, z - 1);
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    createCube(x, y, z);
                 }
             }
         }
 
-        scene.add(cubesGroup);
-
-        camera.position.z = 5;
-
-        // 回転機能
-        let isDragging = false;
-        let startX, startY;
+        scene.add(cubeGroup);
+        camera.position.z = 6;
 
         function rotateLayer(axis, index, angle) {
-            cubes.forEach(cube => {
+            cubeGroup.children.forEach(cube => {
                 if (Math.round(cube.position[axis]) === index) {
                     const rotation = new THREE.Quaternion();
                     rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
@@ -87,11 +83,35 @@
             });
         }
 
+        function handleSwipe(deltaX, deltaY) {
+            const threshold = 50; // スワイプのしきい値
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // 水平スワイプでXまたはY方向層回転
+                if (Math.abs(deltaX) > threshold) {
+                    rotateLayer('y', Math.round((deltaX / 100) * 1), Math.PI / 8);
+                }
+            } else {
+                // 垂直スワイプでXまたはZ方向層回転
+                if (Math.abs(deltaY) > threshold) {
+                    rotateLayer('x', Math.round((deltaY / 100) * 1), Math.PI / 8);
+                }
+            }
+        }
+
+        function handleTouchSwipe(touchStartX, touchStartY, touchCurrentX, touchCurrentY) {
+            const deltaX = touchCurrentX - touchStartX;
+            const deltaY = touchCurrentY - touchStartY;
+            handleSwipe(deltaX, deltaY);
+        }
+
         function rotateView(axis, angle) {
             const rotation = new THREE.Quaternion();
             rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
             camera.quaternion.premultiply(rotation);
         }
+
+        let isDragging = false;
+        let startX, startY;
 
         window.addEventListener('mousedown', (event) => {
             isDragging = true;
@@ -103,13 +123,7 @@
             if (isDragging) {
                 const deltaX = event.clientX - startX;
                 const deltaY = event.clientY - startY;
-
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    rotateLayer('y', 0, deltaX * 0.01);
-                } else {
-                    rotateLayer('x', 0, deltaY * 0.01);
-                }
-
+                handleSwipe(deltaX, deltaY);
                 startX = event.clientX;
                 startY = event.clientY;
             }
@@ -127,15 +141,7 @@
 
         window.addEventListener('touchmove', (event) => {
             if (isDragging) {
-                const deltaX = event.touches[0].clientX - startX;
-                const deltaY = event.touches[0].clientY - startY;
-
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    rotateLayer('y', 0, deltaX * 0.01);
-                } else {
-                    rotateLayer('x', 0, deltaY * 0.01);
-                }
-
+                handleTouchSwipe(startX, startY, event.touches[0].clientX, event.touches[0].clientY);
                 startX = event.touches[0].clientX;
                 startY = event.touches[0].clientY;
             }
@@ -157,14 +163,24 @@
             rotateView('z', Math.PI / 8);
         });
 
-        // アニメーションループ
+        document.getElementById('rotateLayerX').addEventListener('click', () => {
+            rotateLayer('x', 0, Math.PI / 8);
+        });
+
+        document.getElementById('rotateLayerY').addEventListener('click', () => {
+            rotateLayer('y', 0, Math.PI / 8);
+        });
+
+        document.getElementById('rotateLayerZ').addEventListener('click', () => {
+            rotateLayer('z', 0, Math.PI / 8);
+        });
+
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
         animate();
 
-        // ウィンドウリサイズ対応
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
