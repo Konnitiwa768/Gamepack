@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3Dギアキューブ</title>
+    <title>ギア付き3Dキューブ</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -43,19 +43,46 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 3x3x3ギアキューブの作成
+        // ギアキューブの設定
         const cubeSize = 1;
         const gap = 0.1;
         const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
         const cubes = [];
         const cubeGroup = new THREE.Group();
 
-        function createGearCube(x, y, z) {
+        function createGear(radius, thickness, teeth) {
+            const gearGroup = new THREE.Group();
+            const base = new THREE.CylinderGeometry(radius, radius, thickness, 32);
+            const baseMesh = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color: 0xaaaaaa }));
+
+            gearGroup.add(baseMesh);
+
+            // ギアの歯の作成
+            for (let i = 0; i < teeth; i++) {
+                const tooth = new THREE.BoxGeometry(0.2, 0.1, 0.1);
+                const toothMesh = new THREE.Mesh(tooth, new THREE.MeshBasicMaterial({ color: 0xaaaaaa }));
+                const angle = (i / teeth) * Math.PI * 2;
+                toothMesh.position.set(Math.cos(angle) * (radius + 0.1), Math.sin(angle) * (radius + 0.1), thickness / 2);
+                toothMesh.rotation.z = angle;
+                gearGroup.add(toothMesh);
+            }
+
+            return gearGroup;
+        }
+
+        function createCubeWithGear(x, y, z) {
             const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
             const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
             const cube = new THREE.Mesh(geometry, materials);
             cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
-            cube.userData = { x, y, z }; // 各キューブの位置を保存
+            cube.userData = { x, y, z };
+
+            // ギアを追加
+            const gear = createGear(0.4, 0.1, 10);
+            gear.position.copy(cube.position);
+            gear.position.z += cubeSize / 2; // ギアを前面に配置
+            cubeGroup.add(gear);
+
             cubeGroup.add(cube);
             cubes.push(cube);
         }
@@ -63,7 +90,7 @@
         for (let x = -1; x <= 1; x++) {
             for (let y = -1; y <= 1; y++) {
                 for (let z = -1; z <= 1; z++) {
-                    createGearCube(x, y, z);
+                    createCubeWithGear(x, y, z);
                 }
             }
         }
@@ -72,33 +99,37 @@
         camera.position.z = 6;
 
         function rotateLayer(axis, index, angle) {
-            const rotation = new THREE.Quaternion();
-            rotation.setFromAxisAngle(new THREE.Vector3(
-                axis === 'x' ? 1 : 0,
-                axis === 'y' ? 1 : 0,
-                axis === 'z' ? 1 : 0
-            ), angle);
-
-            // ギアの連動処理
             cubeGroup.children.forEach(cube => {
                 if (Math.round(cube.position[axis]) === index) {
+                    const rotation = new THREE.Quaternion();
+                    rotation.setFromAxisAngle(new THREE.Vector3(
+                        axis === 'x' ? 1 : 0,
+                        axis === 'y' ? 1 : 0,
+                        axis === 'z' ? 1 : 0
+                    ), angle);
                     cube.applyQuaternion(rotation);
-                    // 隣接層の連動処理を追加する場合
-                    // 例えば、隣接する層も回転させるなど
+
+                    // ギアの連動をシミュレートするために隣接層も回転させる
+                    const adjacentLayerIndex = axis === 'x' ? cube.position.x :
+                                              axis === 'y' ? cube.position.y :
+                                              cube.position.z;
+                    if (Math.abs(adjacentLayerIndex - index) < 1.1) {
+                        cube.applyQuaternion(rotation);
+                    }
                 }
             });
         }
 
         document.getElementById('rotateLayerX').addEventListener('click', () => {
-            rotateLayer('x', 0, Math.PI / 8); // X方向の層を回転
+            rotateLayer('x', 0, Math.PI / 8);
         });
 
         document.getElementById('rotateLayerY').addEventListener('click', () => {
-            rotateLayer('y', 0, Math.PI / 8); // Y方向の層を回転
+            rotateLayer('y', 0, Math.PI / 8);
         });
 
         document.getElementById('rotateLayerZ').addEventListener('click', () => {
-            rotateLayer('z', 0, Math.PI / 8); // Z方向の層を回転
+            rotateLayer('z', 0, Math.PI / 8);
         });
 
         function animate() {
