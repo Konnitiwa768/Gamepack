@@ -3,13 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ギア付き3Dキューブ</title>
+    <title>ギア付き3Dキューブシミュレーター</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
         #controls {
             position: absolute;
             top: 10px;
+            left: 10px;
+            z-index: 10;
+            color: #fff;
+        }
+        #sliders {
+            position: absolute;
+            bottom: 10px;
             left: 10px;
             z-index: 10;
             color: #fff;
@@ -25,6 +32,10 @@
         button:hover {
             background-color: #555;
         }
+        input[type="range"] {
+            width: 100px;
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
@@ -32,6 +43,11 @@
         <button id="rotateLayerX">X方向層回転</button>
         <button id="rotateLayerY">Y方向層回転</button>
         <button id="rotateLayerZ">Z方向層回転</button>
+    </div>
+    <div id="sliders">
+        <label>X軸回転: <input type="range" id="sliderX" min="-180" max="180" value="0"></label>
+        <label>Y軸回転: <input type="range" id="sliderY" min="-180" max="180" value="0"></label>
+        <label>Z軸回転: <input type="range" id="sliderZ" min="-180" max="180" value="0"></label>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -100,6 +116,29 @@
                     gear.rotateOnWorldAxis(rotationAxis, angle);
                 }
             });
+        }
+
+        // スライダーで視点回転を制御
+        const sliderX = document.getElementById('sliderX');
+        const sliderY = document.getElementById('sliderY');
+        const sliderZ = document.getElementById('sliderZ');
+
+        sliderX.addEventListener('input', () => {
+            updateCameraRotation();
+        });
+        sliderY.addEventListener('input', () => {
+            updateCameraRotation();
+        });
+        sliderZ.addEventListener('input', () => {
+            updateCameraRotation();
+        });
+
+        function updateCameraRotation() {
+            const rotationX = THREE.Math.degToRad(sliderX.value);
+            const rotationY = THREE.Math.degToRad(sliderY.value);
+            const rotationZ = THREE.Math.degToRad(sliderZ.value);
+
+            camera.rotation.set(rotationX, rotationY, rotationZ);
         }
 
         // ボタンのイベントリスナー
