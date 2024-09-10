@@ -40,9 +40,15 @@
 </head>
 <body>
     <div id="controls">
-        <button id="rotateLayerX">X方向層回転</button>
-        <button id="rotateLayerY">Y方向層回転</button>
-        <button id="rotateLayerZ">Z方向層回転</button>
+        <button id="rotateLayerX0">X方向層0回転</button>
+        <button id="rotateLayerX1">X方向層1回転</button>
+        <button id="rotateLayerX2">X方向層2回転</button>
+        <button id="rotateLayerY0">Y方向層0回転</button>
+        <button id="rotateLayerY1">Y方向層1回転</button>
+        <button id="rotateLayerY2">Y方向層2回転</button>
+        <button id="rotateLayerZ0">Z方向層0回転</button>
+        <button id="rotateLayerZ1">Z方向層1回転</button>
+        <button id="rotateLayerZ2">Z方向層2回転</button>
         <button id="resetCube">揃える</button> <!-- 揃えるボタンを追加 -->
     </div>
     <div id="sliders">
@@ -128,15 +134,18 @@
             camera.rotation.set(rotationX, rotationY, rotationZ);
         }
 
-        document.getElementById('rotateLayerX').addEventListener('click', () => {
-            rotateLayer('x', 0, Math.PI); // 180度回転
-        });
-        document.getElementById('rotateLayerY').addEventListener('click', () => {
-            rotateLayer('y', 0, Math.PI); // 180度回転
-        });
-        document.getElementById('rotateLayerZ').addEventListener('click', () => {
-            rotateLayer('z', 0, Math.PI); // 180度回転
-        });
+        // 各層の回転ボタンの設定
+        document.getElementById('rotateLayerX0').addEventListener('click', () => rotateLayer('x', -1, Math.PI / 2));
+        document.getElementById('rotateLayerX1').addEventListener('click', () => rotateLayer('x', 0, Math.PI / 2));
+        document.getElementById('rotateLayerX2').addEventListener('click', () => rotateLayer('x', 1, Math.PI / 2));
+
+        document.getElementById('rotateLayerY0').addEventListener('click', () => rotateLayer('y', -1, Math.PI / 2));
+        document.getElementById('rotateLayerY1').addEventListener('click', () => rotateLayer('y', 0, Math.PI / 2));
+        document.getElementById('rotateLayerY2').addEventListener('click', () => rotateLayer('y', 1, Math.PI / 2));
+
+        document.getElementById('rotateLayerZ0').addEventListener('click', () => rotateLayer('z', -1, Math.PI / 2));
+        document.getElementById('rotateLayerZ1').addEventListener('click', () => rotateLayer('z', 0, Math.PI / 2));
+        document.getElementById('rotateLayerZ2').addEventListener('click', () => rotateLayer('z', 1, Math.PI / 2));
 
         document.getElementById('resetCube').addEventListener('click', () => {
             gearGroup.rotation.set(0, 0, 0); // ギアの位置をリセット
