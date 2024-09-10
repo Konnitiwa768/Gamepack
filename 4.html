@@ -44,17 +44,19 @@
         document.body.appendChild(renderer.domElement);
 
         // ギアキューブの設定
-        const cubeSize = 1;
-        const gap = 0.1;
+        const gearSize = 1;
+        const gap = 0.2;
+        const gearTeethCount = 12; // ギアの歯の数
         const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
-        const cubes = [];
-        const cubeGroup = new THREE.Group();
+        const gears = [];
+        const gearGroup = new THREE.Group();
 
-        function createGear(radius, thickness, teeth) {
+        // ギアの作成関数
+        function createGear(radius, thickness, teeth, x, y, z) {
             const gearGroup = new THREE.Group();
             const base = new THREE.CylinderGeometry(radius, radius, thickness, 32);
-            const baseMesh = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color: 0xaaaaaa }));
-
+            const baseMesh = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)] }));
+            baseMesh.rotation.x = Math.PI / 2; // 水平配置
             gearGroup.add(baseMesh);
 
             // ギアの歯の作成
@@ -67,77 +69,58 @@
                 gearGroup.add(toothMesh);
             }
 
+            gearGroup.position.set(x * (gearSize + gap), y * (gearSize + gap), z * (gearSize + gap));
             return gearGroup;
         }
 
-        function createCubeWithGear(x, y, z) {
-            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-            const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
-            const cube = new THREE.Mesh(geometry, materials);
-            cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
-            cube.userData = { x, y, z };
-
-            // ギアを追加
-            const gear = createGear(0.4, 0.1, 10);
-            gear.position.copy(cube.position);
-            gear.position.z += cubeSize / 2; // ギアを前面に配置
-            cubeGroup.add(gear);
-
-            cubeGroup.add(cube);
-            cubes.push(cube);
-        }
-
+        // ギアキューブのパーツを作成して配置
         for (let x = -1; x <= 1; x++) {
             for (let y = -1; y <= 1; y++) {
                 for (let z = -1; z <= 1; z++) {
-                    createCubeWithGear(x, y, z);
+                    const gear = createGear(gearSize / 2, 0.2, gearTeethCount, x, y, z);
+                    gears.push(gear);
+                    gearGroup.add(gear);
                 }
             }
         }
 
-        scene.add(cubeGroup);
-        camera.position.z = 6;
+        scene.add(gearGroup);
+        camera.position.z = 8;
 
+        // 回転関数：層ごとのギアの回転を設定
         function rotateLayer(axis, index, angle) {
-            cubeGroup.children.forEach(cube => {
-                if (Math.round(cube.position[axis]) === index) {
-                    const rotation = new THREE.Quaternion();
-                    rotation.setFromAxisAngle(new THREE.Vector3(
+            gearGroup.children.forEach(gear => {
+                const pos = gear.position[axis];
+                if (Math.abs(pos - index * (gearSize + gap)) < 0.1) {
+                    const rotationAxis = new THREE.Vector3(
                         axis === 'x' ? 1 : 0,
                         axis === 'y' ? 1 : 0,
                         axis === 'z' ? 1 : 0
-                    ), angle);
-                    cube.applyQuaternion(rotation);
-
-                    // ギアの連動をシミュレートするために隣接層も回転させる
-                    const adjacentLayerIndex = axis === 'x' ? cube.position.x :
-                                              axis === 'y' ? cube.position.y :
-                                              cube.position.z;
-                    if (Math.abs(adjacentLayerIndex - index) < 1.1) {
-                        cube.applyQuaternion(rotation);
-                    }
+                    );
+                    gear.rotateOnWorldAxis(rotationAxis, angle);
                 }
             });
         }
 
+        // ボタンのイベントリスナー
         document.getElementById('rotateLayerX').addEventListener('click', () => {
             rotateLayer('x', 0, Math.PI / 8);
         });
-
         document.getElementById('rotateLayerY').addEventListener('click', () => {
             rotateLayer('y', 0, Math.PI / 8);
         });
-
         document.getElementById('rotateLayerZ').addEventListener('click', () => {
             rotateLayer('z', 0, Math.PI / 8);
         });
 
+        // アニメーションループ
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
         animate();
 
+        // ウィンドウのリサイズ対応
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
