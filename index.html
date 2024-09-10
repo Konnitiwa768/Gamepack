@@ -85,15 +85,19 @@
 
         function handleSwipe(deltaX, deltaY) {
             const threshold = 50; // スワイプのしきい値
+            const rotationAngle = Math.PI / 8; // 回転角度
+
             if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                // 水平スワイプでXまたはY方向層回転
+                // 水平スワイプでY方向層回転
                 if (Math.abs(deltaX) > threshold) {
-                    rotateLayer('y', Math.round((deltaX / 100) * 1), Math.PI / 8);
+                    const index = Math.round((deltaX / window.innerWidth) * 2); // インデックスの範囲は-1から1
+                    rotateLayer('y', index - 1, rotationAngle);
                 }
             } else {
-                // 垂直スワイプでXまたはZ方向層回転
+                // 垂直スワイプでX方向層回転
                 if (Math.abs(deltaY) > threshold) {
-                    rotateLayer('x', Math.round((deltaY / 100) * 1), Math.PI / 8);
+                    const index = Math.round((deltaY / window.innerHeight) * 2); // インデックスの範囲は-1から1
+                    rotateLayer('x', index - 1, rotationAngle);
                 }
             }
         }
