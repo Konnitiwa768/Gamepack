@@ -14,7 +14,7 @@
             z-index: 10;
             color: #fff;
         }
-        button {
+        button, input[type="range"] {
             margin: 5px;
             padding: 10px;
             background-color: #333;
@@ -22,8 +22,11 @@
             border: none;
             cursor: pointer;
         }
-        button:hover {
+        button:hover, input[type="range"]:hover {
             background-color: #555;
+        }
+        input[type="range"] {
+            width: 150px;
         }
     </style>
 </head>
@@ -32,9 +35,24 @@
         <button id="rotateX">X軸回転</button>
         <button id="rotateY">Y軸回転</button>
         <button id="rotateZ">Z軸回転</button>
-        <button id="rotateLayerX">X方向層回転</button>
-        <button id="rotateLayerY">Y方向層回転</button>
-        <button id="rotateLayerZ">Z方向層回転</button>
+        <button id="rotateLayerX0">X方向層0回転</button>
+        <button id="rotateLayerX1">X方向層1回転</button>
+        <button id="rotateLayerX2">X方向層2回転</button>
+        <button id="rotateLayerY0">Y方向層0回転</button>
+        <button id="rotateLayerY1">Y方向層1回転</button>
+        <button id="rotateLayerY2">Y方向層2回転</button>
+        <button id="rotateLayerZ0">Z方向層0回転</button>
+        <button id="rotateLayerZ1">Z方向層1回転</button>
+        <button id="rotateLayerZ2">Z方向層2回転</button>
+        <br>
+        <label for="xRotation">X軸回転:</label>
+        <input id="xRotation" type="range" min="-180" max="180" value="0" step="1">
+        <br>
+        <label for="yRotation">Y軸回転:</label>
+        <input id="yRotation" type="range" min="-180" max="180" value="0" step="1">
+        <br>
+        <label for="zRotation">Z軸回転:</label>
+        <input id="zRotation" type="range" min="-180" max="180" value="0" step="1">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -49,13 +67,27 @@
         // 3x3x3ルービックキューブの作成
         const cubeSize = 1;
         const gap = 0.1;
-        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
+        const colors = {
+            front: 0xff0000,  // 赤
+            back: 0xffa500,   // オレンジ
+            top: 0x00ff00,    // 緑
+            bottom: 0x0000ff, // 青
+            left: 0xffff00,   // 黄
+            right: 0xffffff   // 白
+        };
         const cubes = [];
         const cubeGroup = new THREE.Group();
 
         function createCube(x, y, z) {
             const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-            const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+            const materials = [
+                new THREE.MeshBasicMaterial({ color: (x === 1) ? colors.right : colors.front, side: THREE.DoubleSide }), // right
+                new THREE.MeshBasicMaterial({ color: (x === -1) ? colors.left : colors.front, side: THREE.DoubleSide }), // left
+                new THREE.MeshBasicMaterial({ color: (y === 1) ? colors.top : colors.front, side: THREE.DoubleSide }), // top
+                new THREE.MeshBasicMaterial({ color: (y === -1) ? colors.bottom : colors.front, side: THREE.DoubleSide }), // bottom
+                new THREE.MeshBasicMaterial({ color: (z === 1) ? colors.back : colors.front, side: THREE.DoubleSide }), // back
+                new THREE.MeshBasicMaterial({ color: (z === -1) ? colors.front : colors.front, side: THREE.DoubleSide }) // front
+            ];
             const cube = new THREE.Mesh(geometry, materials);
             cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
             cubeGroup.add(cube);
@@ -77,106 +109,88 @@
             cubeGroup.children.forEach(cube => {
                 if (Math.round(cube.position[axis]) === index) {
                     const rotation = new THREE.Quaternion();
-                    rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
+                    rotation.setFromAxisAngle(new THREE.Vector3(
+                        axis === 'x' ? 1 : 0,
+                        axis === 'y' ? 1 : 0,
+                        axis === 'z' ? 1 : 0
+                    ), angle);
                     cube.applyQuaternion(rotation);
                 }
             });
         }
 
-        function handleSwipe(deltaX, deltaY) {
-            const threshold = 50; // スワイプのしきい値
-            const rotationAngle = Math.PI / 8; // 回転角度
-
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                // 水平スワイプでY方向層回転
-                if (Math.abs(deltaX) > threshold) {
-                    const index = Math.round((deltaX / window.innerWidth) * 2); // インデックスの範囲は-1から1
-                    rotateLayer('y', index - 1, rotationAngle);
-                }
-            } else {
-                // 垂直スワイプでX方向層回転
-                if (Math.abs(deltaY) > threshold) {
-                    const index = Math.round((deltaY / window.innerHeight) * 2); // インデックスの範囲は-1から1
-                    rotateLayer('x', index - 1, rotationAngle);
-                }
-            }
-        }
-
-        function handleTouchSwipe(touchStartX, touchStartY, touchCurrentX, touchCurrentY) {
-            const deltaX = touchCurrentX - touchStartX;
-            const deltaY = touchCurrentY - touchStartY;
-            handleSwipe(deltaX, deltaY);
-        }
-
         function rotateView(axis, angle) {
             const rotation = new THREE.Quaternion();
-            rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
+            rotation.setFromAxisAngle(new THREE.Vector3(
+                axis === 'x' ? 1 : 0,
+                axis === 'y' ? 1 : 0,
+                axis === 'z' ? 1 : 0
+            ), angle);
             camera.quaternion.premultiply(rotation);
         }
 
-        let isDragging = false;
-        let startX, startY;
+        function updateRotation() {
+            const xRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('xRotation').value));
+            const yRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('yRotation').value));
+            const zRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('zRotation').value));
 
-        window.addEventListener('mousedown', (event) => {
-            isDragging = true;
-            startX = event.clientX;
-            startY = event.clientY;
-        });
+            camera.rotation.set(
+                xRotation,
+                yRotation,
+                zRotation
+            );
+        }
 
-        window.addEventListener('mousemove', (event) => {
-            if (isDragging) {
-                const deltaX = event.clientX - startX;
-                const deltaY = event.clientY - startY;
-                handleSwipe(deltaX, deltaY);
-                startX = event.clientX;
-                startY = event.clientY;
-            }
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        window.addEventListener('touchstart', (event) => {
-            isDragging = true;
-            startX = event.touches[0].clientX;
-            startY = event.touches[0].clientY;
-        });
-
-        window.addEventListener('touchmove', (event) => {
-            if (isDragging) {
-                handleTouchSwipe(startX, startY, event.touches[0].clientX, event.touches[0].clientY);
-                startX = event.touches[0].clientX;
-                startY = event.touches[0].clientY;
-            }
-        });
-
-        window.addEventListener('touchend', () => {
-            isDragging = false;
-        });
+        document.getElementById('xRotation').addEventListener('input', updateRotation);
+        document.getElementById('yRotation').addEventListener('input', updateRotation);
+        document.getElementById('zRotation').addEventListener('input', updateRotation);
 
         document.getElementById('rotateX').addEventListener('click', () => {
-            rotateView('x', Math.PI / 8);
+            rotateView('x', Math.PI / 4);
         });
 
         document.getElementById('rotateY').addEventListener('click', () => {
-            rotateView('y', Math.PI / 8);
+            rotateView('y', Math.PI / 4);
         });
 
         document.getElementById('rotateZ').addEventListener('click', () => {
-            rotateView('z', Math.PI / 8);
+            rotateView('z', Math.PI / 4);
         });
 
-        document.getElementById('rotateLayerX').addEventListener('click', () => {
-            rotateLayer('x', 0, Math.PI / 8);
+        document.getElementById('rotateLayerX0').addEventListener('click', () => {
+            rotateLayer('x', -1, Math.PI / 2);
         });
 
-        document.getElementById('rotateLayerY').addEventListener('click', () => {
-            rotateLayer('y', 0, Math.PI / 8);
+        document.getElementById('rotateLayerX1').addEventListener('click', () => {
+            rotateLayer('x', 0, Math.PI / 2);
         });
 
-        document.getElementById('rotateLayerZ').addEventListener('click', () => {
-            rotateLayer('z', 0, Math.PI / 8);
+        document.getElementById('rotateLayerX2').addEventListener('click', () => {
+            rotateLayer('x', 1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerY0').addEventListener('click', () => {
+            rotateLayer('y', -1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerY1').addEventListener('click', () => {
+            rotateLayer('y', 0, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerY2').addEventListener('click', () => {
+            rotateLayer('y', 1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerZ0').addEventListener('click', () => {
+            rotateLayer('z', -1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerZ1').addEventListener('click', () => {
+            rotateLayer('z', 0, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerZ2').addEventListener('click', () => {
+            rotateLayer('z', 1, Math.PI / 2);
         });
 
         function animate() {
