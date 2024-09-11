@@ -3,13 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>インタラクティブ3Dルービックキューブ</title>
+    <title>3Dルービックキューブ</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
         #controls {
             position: absolute;
             top: 10px;
+            left: 10px;
+            z-index: 10;
+            color: #fff;
+        }
+        #sliders {
+            position: absolute;
+            bottom: 10px;
             left: 10px;
             z-index: 10;
             color: #fff;
@@ -25,28 +32,39 @@
         button:hover {
             background-color: #555;
         }
+        input[type="range"] {
+            width: 100px;
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
     <div id="controls">
-        <button id="rotateX">X軸回転</button>
-        <button id="rotateY">Y軸回転</button>
-        <button id="rotateZ">Z軸回転</button>
-        <button id="rotateLayerX">X方向層回転</button>
-        <button id="rotateLayerY">Y方向層回転</button>
-        <button id="rotateLayerZ">Z方向層回転</button>
+        <button id="rotateLayerX0">X方向層0回転</button>
+        <button id="rotateLayerX1">X方向層1回転</button>
+        <button id="rotateLayerX2">X方向層2回転</button>
+        <button id="rotateLayerY0">Y方向層0回転</button>
+        <button id="rotateLayerY1">Y方向層1回転</button>
+        <button id="rotateLayerY2">Y方向層2回転</button>
+        <button id="rotateLayerZ0">Z方向層0回転</button>
+        <button id="rotateLayerZ1">Z方向層1回転</button>
+        <button id="rotateLayerZ2">Z方向層2回転</button>
+        <button id="resetCube">揃える</button>
+    </div>
+    <div id="sliders">
+        <label>X軸回転: <input type="range" id="sliderX" min="-180" max="180" value="0"></label>
+        <label>Y軸回転: <input type="range" id="sliderY" min="-180" max="180" value="0"></label>
+        <label>Z軸回転: <input type="range" id="sliderZ" min="-180" max="180" value="0"></label>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // シーン、カメラ、レンダラーのセットアップ
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 3x3x3ルービックキューブの作成
         const cubeSize = 1;
         const gap = 0.1;
         const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
@@ -74,109 +92,48 @@
         camera.position.z = 6;
 
         function rotateLayer(axis, index, angle) {
+            // 層の回転処理を修正
             cubeGroup.children.forEach(cube => {
                 if (Math.round(cube.position[axis]) === index) {
-                    const rotation = new THREE.Quaternion();
-                    rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
-                    cube.applyQuaternion(rotation);
+                    const rotationAxis = new THREE.Vector3(
+                        axis === 'x' ? 1 : 0,
+                        axis === 'y' ? 1 : 0,
+                        axis === 'z' ? 1 : 0
+                    );
+                    cubeGroup.rotateOnAxis(rotationAxis, angle);
                 }
             });
         }
 
-        function handleSwipe(deltaX, deltaY) {
-            const threshold = 50; // スワイプのしきい値
-            const rotationAngle = Math.PI / 8; // 回転角度
+        const sliderX = document.getElementById('sliderX');
+        const sliderY = document.getElementById('sliderY');
+        const sliderZ = document.getElementById('sliderZ');
 
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                // 水平スワイプでY方向層回転
-                if (Math.abs(deltaX) > threshold) {
-                    const index = Math.round((deltaX / window.innerWidth) * 2); // インデックスの範囲は-1から1
-                    rotateLayer('y', index - 1, rotationAngle);
-                }
-            } else {
-                // 垂直スワイプでX方向層回転
-                if (Math.abs(deltaY) > threshold) {
-                    const index = Math.round((deltaY / window.innerHeight) * 2); // インデックスの範囲は-1から1
-                    rotateLayer('x', index - 1, rotationAngle);
-                }
-            }
+        sliderX.addEventListener('input', updateCameraRotation);
+        sliderY.addEventListener('input', updateCameraRotation);
+        sliderZ.addEventListener('input', updateCameraRotation);
+
+        function updateCameraRotation() {
+            const rotationX = THREE.Math.degToRad(sliderX.value);
+            const rotationY = THREE.Math.degToRad(sliderY.value);
+            const rotationZ = THREE.Math.degToRad(sliderZ.value);
+            camera.rotation.set(rotationX, rotationY, rotationZ);
         }
 
-        function handleTouchSwipe(touchStartX, touchStartY, touchCurrentX, touchCurrentY) {
-            const deltaX = touchCurrentX - touchStartX;
-            const deltaY = touchCurrentY - touchStartY;
-            handleSwipe(deltaX, deltaY);
-        }
+        document.getElementById('rotateLayerX0').addEventListener('click', () => rotateLayer('x', -1, Math.PI / 2));
+        document.getElementById('rotateLayerX1').addEventListener('click', () => rotateLayer('x', 0, Math.PI / 2));
+        document.getElementById('rotateLayerX2').addEventListener('click', () => rotateLayer('x', 1, Math.PI / 2));
 
-        function rotateView(axis, angle) {
-            const rotation = new THREE.Quaternion();
-            rotation.setFromAxisAngle(new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0), angle);
-            camera.quaternion.premultiply(rotation);
-        }
+        document.getElementById('rotateLayerY0').addEventListener('click', () => rotateLayer('y', -1, Math.PI / 2));
+        document.getElementById('rotateLayerY1').addEventListener('click', () => rotateLayer('y', 0, Math.PI / 2));
+        document.getElementById('rotateLayerY2').addEventListener('click', () => rotateLayer('y', 1, Math.PI / 2));
 
-        let isDragging = false;
-        let startX, startY;
+        document.getElementById('rotateLayerZ0').addEventListener('click', () => rotateLayer('z', -1, Math.PI / 2));
+        document.getElementById('rotateLayerZ1').addEventListener('click', () => rotateLayer('z', 0, Math.PI / 2));
+        document.getElementById('rotateLayerZ2').addEventListener('click', () => rotateLayer('z', 1, Math.PI / 2));
 
-        window.addEventListener('mousedown', (event) => {
-            isDragging = true;
-            startX = event.clientX;
-            startY = event.clientY;
-        });
-
-        window.addEventListener('mousemove', (event) => {
-            if (isDragging) {
-                const deltaX = event.clientX - startX;
-                const deltaY = event.clientY - startY;
-                handleSwipe(deltaX, deltaY);
-                startX = event.clientX;
-                startY = event.clientY;
-            }
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        window.addEventListener('touchstart', (event) => {
-            isDragging = true;
-            startX = event.touches[0].clientX;
-            startY = event.touches[0].clientY;
-        });
-
-        window.addEventListener('touchmove', (event) => {
-            if (isDragging) {
-                handleTouchSwipe(startX, startY, event.touches[0].clientX, event.touches[0].clientY);
-                startX = event.touches[0].clientX;
-                startY = event.touches[0].clientY;
-            }
-        });
-
-        window.addEventListener('touchend', () => {
-            isDragging = false;
-        });
-
-        document.getElementById('rotateX').addEventListener('click', () => {
-            rotateView('x', Math.PI / 8);
-        });
-
-        document.getElementById('rotateY').addEventListener('click', () => {
-            rotateView('y', Math.PI / 8);
-        });
-
-        document.getElementById('rotateZ').addEventListener('click', () => {
-            rotateView('z', Math.PI / 8);
-        });
-
-        document.getElementById('rotateLayerX').addEventListener('click', () => {
-            rotateLayer('x', 0, Math.PI / 8);
-        });
-
-        document.getElementById('rotateLayerY').addEventListener('click', () => {
-            rotateLayer('y', 0, Math.PI / 8);
-        });
-
-        document.getElementById('rotateLayerZ').addEventListener('click', () => {
-            rotateLayer('z', 0, Math.PI / 8);
+        document.getElementById('resetCube').addEventListener('click', () => {
+            cubeGroup.rotation.set(0, 0, 0); // キューブの回転をリセット
         });
 
         function animate() {
