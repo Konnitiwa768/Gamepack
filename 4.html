@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ギア付き3Dキューブ</title> <!-- タイトルを修正 -->
+    <title>インタラクティブ3Dひし形ルービックキューブ</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -14,14 +14,7 @@
             z-index: 10;
             color: #fff;
         }
-        #sliders {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            z-index: 10;
-            color: #fff;
-        }
-        button {
+        button, input[type="range"] {
             margin: 5px;
             padding: 10px;
             background-color: #333;
@@ -29,55 +22,101 @@
             border: none;
             cursor: pointer;
         }
-        button:hover {
+        button:hover, input[type="range"]:hover {
             background-color: #555;
         }
         input[type="range"] {
-            width: 100px;
-            margin: 5px;
+            width: 150px;
         }
     </style>
 </head>
 <body>
     <div id="controls">
-        <button id="rotateLayerX0">X方向層0回転</button>
-        <button id="rotateLayerX1">X方向層1回転</button>
-        <button id="rotateLayerX2">X方向層2回転</button>
-        <button id="rotateLayerY0">Y方向層0回転</button>
-        <button id="rotateLayerY1">Y方向層1回転</button>
-        <button id="rotateLayerY2">Y方向層2回転</button>
-        <button id="rotateLayerZ0">Z方向層0回転</button>
-        <button id="rotateLayerZ1">Z方向層1回転</button>
-        <button id="rotateLayerZ2">Z方向層2回転</button>
-        <button id="resetCube">揃える</button> <!-- 揃えるボタンを追加 -->
-    </div>
-    <div id="sliders">
-        <label>X軸回転: <input type="range" id="sliderX" min="-180" max="180" value="0"></label>
-        <label>Y軸回転: <input type="range" id="sliderY" min="-180" max="180" value="0"></label>
-        <label>Z軸回転: <input type="range" id="sliderZ" min="-180" max="180" value="0"></label>
+        <button id="rotateX">X軸回転</button>
+        <button id="rotateY">Y軸回転</button>
+        <button id="rotateZ">Z軸回転</button>
+        <br>
+        <label for="xRotation">X軸回転:</label>
+        <input id="xRotation" type="range" min="-180" max="180" value="0" step="1">
+        <br>
+        <label for="yRotation">Y軸回転:</label>
+        <input id="yRotation" type="range" min="-180" max="180" value="0" step="1">
+        <br>
+        <label for="zRotation">Z軸回転:</label>
+        <input id="zRotation" type="range" min="-180" max="180" value="0" step="1">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        // シーン、カメラ、レンダラーのセットアップ
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // 3x3のひし形パネルを持つルービックキューブを作成
         const cubeSize = 1;
         const gap = 0.1;
-        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
-        const cubes = [];
-        const cubeGroup = new THREE.Group();
+        const panelSize = cubeSize / 3;
+        const colors = {
+            front: 0xff0000,  // 赤
+            back: 0xffa500,   // オレンジ
+            top: 0x00ff00,    // 緑
+            bottom: 0x0000ff, // 青
+            left: 0xffff00,   // 黄
+            right: 0xffffff   // 白
+        };
+
+        const panelGeometry = new THREE.Geometry();
+        // ひし形の頂点を追加
+        panelGeometry.vertices.push(
+            new THREE.Vector3(-panelSize / 2, 0, panelSize / 2), // 左上
+            new THREE.Vector3(panelSize / 2, 0, panelSize / 2),  // 右上
+            new THREE.Vector3(panelSize / 2, 0, -panelSize / 2), // 右下
+            new THREE.Vector3(-panelSize / 2, 0, -panelSize / 2) // 左下
+        );
+
+        // ひし形の面を追加
+        panelGeometry.faces.push(
+            new THREE.Face4(0, 1, 2, 3) // ひし形の面
+        );
+
+        panelGeometry.computeFaceNormals();
+        panelGeometry.computeVertexNormals();
 
         function createCube(x, y, z) {
-            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-            const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
-            const cube = new THREE.Mesh(geometry, materials);
-            cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
-            cubeGroup.add(cube);
-            cubes.push(cube);
+            const cubeGroup = new THREE.Group();
+            const materials = [];
+            for (let i = 0; i < 6; i++) {
+                materials.push(new THREE.MeshBasicMaterial({
+                    color: (i === 0) ? colors.front : (i === 1) ? colors.back : (i === 2) ? colors.top : (i === 3) ? colors.bottom : (i === 4) ? colors.left : colors.right,
+                    side: THREE.DoubleSide
+                }));
+            }
+
+            // 各面を作成し、位置と回転を調整
+            function createPanel(xOffset, yOffset, zOffset, rotationX, rotationY, rotationZ, colorIndex) {
+                const panel = new THREE.Mesh(panelGeometry, materials[colorIndex]);
+                panel.position.set(x * (cubeSize + gap) + xOffset, y * (cubeSize + gap) + yOffset, z * (cubeSize + gap) + zOffset);
+                panel.rotation.set(rotationX, rotationY, rotationZ);
+                return panel;
+            }
+
+            // 前面
+            cubeGroup.add(createPanel(0, 0, panelSize / 2, 0, 0, 0, 0));
+            // 背面
+            cubeGroup.add(createPanel(0, 0, -panelSize / 2, 0, Math.PI, 0, 1));
+            // 上面
+            cubeGroup.add(createPanel(0, panelSize / 2, 0, -Math.PI / 2, 0, 0, 2));
+            // 下面
+            cubeGroup.add(createPanel(0, -panelSize / 2, 0, Math.PI / 2, 0, 0, 3));
+            // 左面
+            cubeGroup.add(createPanel(-panelSize / 2, 0, 0, 0, Math.PI / 2, 0, 4));
+            // 右面
+            cubeGroup.add(createPanel(panelSize / 2, 0, 0, 0, -Math.PI / 2, 0, 5));
+
+            scene.add(cubeGroup);
         }
 
         for (let x = -1; x <= 1; x++) {
@@ -88,53 +127,46 @@
             }
         }
 
-        scene.add(cubeGroup);
         camera.position.z = 6;
 
-        function rotateLayer(axis, index, angle) {
-            // 回転する層のキューブを取得
-            cubeGroup.children.forEach(cube => {
-                if (Math.round(cube.position[axis]) === index) {
-                    // 回転中心を設定
-                    const rotationAxis = new THREE.Vector3(
-                        axis === 'x' ? 1 : 0,
-                        axis === 'y' ? 1 : 0,
-                        axis === 'z' ? 1 : 0
-                    );
-                    cubeGroup.rotateOnAxis(rotationAxis, angle);
+        function rotateCube(axis, angle) {
+            scene.children.forEach(child => {
+                if (child instanceof THREE.Group) {
+                    child.rotation[axis] += angle;
                 }
             });
         }
 
-        const sliderX = document.getElementById('sliderX');
-        const sliderY = document.getElementById('sliderY');
-        const sliderZ = document.getElementById('sliderZ');
+        function updateRotation() {
+            const xRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('xRotation').value));
+            const yRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('yRotation').value));
+            const zRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('zRotation').value));
 
-        sliderX.addEventListener('input', updateCameraRotation);
-        sliderY.addEventListener('input', updateCameraRotation);
-        sliderZ.addEventListener('input', updateCameraRotation);
-
-        function updateCameraRotation() {
-            const rotationX = THREE.Math.degToRad(sliderX.value);
-            const rotationY = THREE.Math.degToRad(sliderY.value);
-            const rotationZ = THREE.Math.degToRad(sliderZ.value);
-            camera.rotation.set(rotationX, rotationY, rotationZ);
+            scene.children.forEach(child => {
+                if (child instanceof THREE.Group) {
+                    child.rotation.set(
+                        xRotation,
+                        yRotation,
+                        zRotation
+                    );
+                }
+            });
         }
 
-        document.getElementById('rotateLayerX0').addEventListener('click', () => rotateLayer('x', -1, Math.PI / 2));
-        document.getElementById('rotateLayerX1').addEventListener('click', () => rotateLayer('x', 0, Math.PI / 2));
-        document.getElementById('rotateLayerX2').addEventListener('click', () => rotateLayer('x', 1, Math.PI / 2));
+        document.getElementById('xRotation').addEventListener('input', updateRotation);
+        document.getElementById('yRotation').addEventListener('input', updateRotation);
+        document.getElementById('zRotation').addEventListener('input', updateRotation);
 
-        document.getElementById('rotateLayerY0').addEventListener('click', () => rotateLayer('y', -1, Math.PI / 2));
-        document.getElementById('rotateLayerY1').addEventListener('click', () => rotateLayer('y', 0, Math.PI / 2));
-        document.getElementById('rotateLayerY2').addEventListener('click', () => rotateLayer('y', 1, Math.PI / 2));
+        document.getElementById('rotateX').addEventListener('click', () => {
+            rotateCube('x', Math.PI / 8);
+        });
 
-        document.getElementById('rotateLayerZ0').addEventListener('click', () => rotateLayer('z', -1, Math.PI / 2));
-        document.getElementById('rotateLayerZ1').addEventListener('click', () => rotateLayer('z', 0, Math.PI / 2));
-        document.getElementById('rotateLayerZ2').addEventListener('click', () => rotateLayer('z', 1, Math.PI / 2));
+        document.getElementById('rotateY').addEventListener('click', () => {
+            rotateCube('y', Math.PI / 8);
+        });
 
-        document.getElementById('resetCube').addEventListener('click', () => {
-            cubeGroup.rotation.set(0, 0, 0); // キューブの回転をリセット
+        document.getElementById('rotateZ').addEventListener('click', () => {
+            rotateCube('z', Math.PI / 8);
         });
 
         function animate() {
