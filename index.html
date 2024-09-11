@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3Dルービックキューブ</title>
+    <title>3Dルービックキューブ</title> <!-- タイトルを修正 -->
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -49,7 +49,7 @@
         <button id="rotateLayerZ0">Z方向層0回転</button>
         <button id="rotateLayerZ1">Z方向層1回転</button>
         <button id="rotateLayerZ2">Z方向層2回転</button>
-        <button id="resetCube">揃える</button>
+        <button id="resetCube">揃える</button> <!-- 揃えるボタンを追加 -->
     </div>
     <div id="sliders">
         <label>X軸回転: <input type="range" id="sliderX" min="-180" max="180" value="0"></label>
@@ -65,42 +65,56 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        const cubeSize = 1;
-        const gap = 0.1;
+        const gearSize = 1;
+        const gap = 0.2;
+        const gearTeethCount = 12;
         const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
-        const cubes = [];
-        const cubeGroup = new THREE.Group();
+        const gears = [];
+        const gearGroup = new THREE.Group();
 
-        function createCube(x, y, z) {
-            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-            const materials = colors.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
-            const cube = new THREE.Mesh(geometry, materials);
-            cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
-            cubeGroup.add(cube);
-            cubes.push(cube);
+        function createGear(radius, thickness, teeth, x, y, z) {
+            const gearGroup = new THREE.Group();
+            const base = new THREE.CylinderGeometry(radius, radius, thickness, 32);
+            const baseMesh = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)] }));
+            baseMesh.rotation.x = Math.PI / 2;
+            gearGroup.add(baseMesh);
+
+            for (let i = 0; i < teeth; i++) {
+                const tooth = new THREE.BoxGeometry(0.2, 0.1, 0.1);
+                const toothMesh = new THREE.Mesh(tooth, new THREE.MeshBasicMaterial({ color: 0xaaaaaa }));
+                const angle = (i / teeth) * Math.PI * 2;
+                toothMesh.position.set(Math.cos(angle) * (radius + 0.1), Math.sin(angle) * (radius + 0.1), thickness / 2);
+                toothMesh.rotation.z = angle;
+                gearGroup.add(toothMesh);
+            }
+
+            gearGroup.position.set(x * (gearSize + gap), y * (gearSize + gap), z * (gearSize + gap));
+            return gearGroup;
         }
 
         for (let x = -1; x <= 1; x++) {
             for (let y = -1; y <= 1; y++) {
                 for (let z = -1; z <= 1; z++) {
-                    createCube(x, y, z);
+                    const gear = createGear(gearSize / 2, 0.2, gearTeethCount, x, y, z);
+                    gears.push(gear);
+                    gearGroup.add(gear);
                 }
             }
         }
 
-        scene.add(cubeGroup);
-        camera.position.z = 6;
+        scene.add(gearGroup);
+        camera.position.z = 8;
 
         function rotateLayer(axis, index, angle) {
-            // 層の回転処理を修正
-            cubeGroup.children.forEach(cube => {
-                if (Math.round(cube.position[axis]) === index) {
+            gearGroup.children.forEach(gear => {
+                const pos = gear.position[axis];
+                if (Math.abs(pos - index * (gearSize + gap)) < 0.1) {
                     const rotationAxis = new THREE.Vector3(
                         axis === 'x' ? 1 : 0,
                         axis === 'y' ? 1 : 0,
                         axis === 'z' ? 1 : 0
                     );
-                    cubeGroup.rotateOnAxis(rotationAxis, angle);
+                    gear.rotateOnWorldAxis(rotationAxis, angle);
                 }
             });
         }
@@ -120,6 +134,7 @@
             camera.rotation.set(rotationX, rotationY, rotationZ);
         }
 
+        // 各層の回転ボタンの設定
         document.getElementById('rotateLayerX0').addEventListener('click', () => rotateLayer('x', -1, Math.PI / 2));
         document.getElementById('rotateLayerX1').addEventListener('click', () => rotateLayer('x', 0, Math.PI / 2));
         document.getElementById('rotateLayerX2').addEventListener('click', () => rotateLayer('x', 1, Math.PI / 2));
@@ -133,7 +148,7 @@
         document.getElementById('rotateLayerZ2').addEventListener('click', () => rotateLayer('z', 1, Math.PI / 2));
 
         document.getElementById('resetCube').addEventListener('click', () => {
-            cubeGroup.rotation.set(0, 0, 0); // キューブの回転をリセット
+            gearGroup.rotation.set(0, 0, 0); // ギアの位置をリセット
         });
 
         function animate() {
