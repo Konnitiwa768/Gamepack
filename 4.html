@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>インタラクティブ3Dひし形ルービックキューブ</title>
+    <title>インタラクティブ3Dルービックキューブ</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -35,6 +35,15 @@
         <button id="rotateX">X軸回転</button>
         <button id="rotateY">Y軸回転</button>
         <button id="rotateZ">Z軸回転</button>
+        <button id="rotateLayerX0">X方向層0回転</button>
+        <button id="rotateLayerX1">X方向層1回転</button>
+        <button id="rotateLayerX2">X方向層2回転</button>
+        <button id="rotateLayerY0">Y方向層0回転</button>
+        <button id="rotateLayerY1">Y方向層1回転</button>
+        <button id="rotateLayerY2">Y方向層2回転</button>
+        <button id="rotateLayerZ0">Z方向層0回転</button>
+        <button id="rotateLayerZ1">Z方向層1回転</button>
+        <button id="rotateLayerZ2">Z方向層2回転</button>
         <br>
         <label for="xRotation">X軸回転:</label>
         <input id="xRotation" type="range" min="-180" max="180" value="0" step="1">
@@ -55,10 +64,9 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 3x3のひし形パネルを持つルービックキューブを作成
+        // 3x3x3ルービックキューブの作成
         const cubeSize = 1;
         const gap = 0.1;
-        const panelSize = cubeSize / 3;
         const colors = {
             front: 0xff0000,  // 赤
             back: 0xffa500,   // オレンジ
@@ -67,74 +75,61 @@
             left: 0xffff00,   // 黄
             right: 0xffffff   // 白
         };
+        const cubes = [];
+        const cubeGroup = new THREE.Group();
 
-        const panelGeometry = new THREE.Geometry();
-        // ひし形の頂点を追加
-        panelGeometry.vertices.push(
-            new THREE.Vector3(-panelSize / 2, 0, panelSize / 2), // 左上
-            new THREE.Vector3(panelSize / 2, 0, panelSize / 2),  // 右上
-            new THREE.Vector3(panelSize / 2, 0, -panelSize / 2), // 右下
-            new THREE.Vector3(-panelSize / 2, 0, -panelSize / 2) // 左下
-        );
+        function createGear(x, y, z) {
+            // 歯車のジオメトリ作成
+            const radius = cubeSize / 2;
+            const depth = 0.2;
+            const segments = 8;
 
-        // ひし形の面を追加
-        panelGeometry.faces.push(
-            new THREE.Face4(0, 1, 2, 3) // ひし形の面
-        );
+            const gearGeometry = new THREE.CylinderGeometry(radius, radius, depth, segments);
+            gearGeometry.rotateX(Math.PI / 2); // 歯車を横にしておく
 
-        panelGeometry.computeFaceNormals();
-        panelGeometry.computeVertexNormals();
+            const materials = [
+                new THREE.MeshBasicMaterial({ color: colors.front, side: THREE.DoubleSide })
+            ];
 
-        function createCube(x, y, z) {
-            const cubeGroup = new THREE.Group();
-            const materials = [];
-            for (let i = 0; i < 6; i++) {
-                materials.push(new THREE.MeshBasicMaterial({
-                    color: (i === 0) ? colors.front : (i === 1) ? colors.back : (i === 2) ? colors.top : (i === 3) ? colors.bottom : (i === 4) ? colors.left : colors.right,
-                    side: THREE.DoubleSide
-                }));
-            }
-
-            // 各面を作成し、位置と回転を調整
-            function createPanel(xOffset, yOffset, zOffset, rotationX, rotationY, rotationZ, colorIndex) {
-                const panel = new THREE.Mesh(panelGeometry, materials[colorIndex]);
-                panel.position.set(x * (cubeSize + gap) + xOffset, y * (cubeSize + gap) + yOffset, z * (cubeSize + gap) + zOffset);
-                panel.rotation.set(rotationX, rotationY, rotationZ);
-                return panel;
-            }
-
-            // 前面
-            cubeGroup.add(createPanel(0, 0, panelSize / 2, 0, 0, 0, 0));
-            // 背面
-            cubeGroup.add(createPanel(0, 0, -panelSize / 2, 0, Math.PI, 0, 1));
-            // 上面
-            cubeGroup.add(createPanel(0, panelSize / 2, 0, -Math.PI / 2, 0, 0, 2));
-            // 下面
-            cubeGroup.add(createPanel(0, -panelSize / 2, 0, Math.PI / 2, 0, 0, 3));
-            // 左面
-            cubeGroup.add(createPanel(-panelSize / 2, 0, 0, 0, Math.PI / 2, 0, 4));
-            // 右面
-            cubeGroup.add(createPanel(panelSize / 2, 0, 0, 0, -Math.PI / 2, 0, 5));
-
-            scene.add(cubeGroup);
+            const gear = new THREE.Mesh(gearGeometry, materials);
+            gear.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
+            cubeGroup.add(gear);
+            cubes.push(gear);
         }
 
         for (let x = -1; x <= 1; x++) {
             for (let y = -1; y <= 1; y++) {
                 for (let z = -1; z <= 1; z++) {
-                    createCube(x, y, z);
+                    createGear(x, y, z);
                 }
             }
         }
 
+        scene.add(cubeGroup);
         camera.position.z = 6;
 
-        function rotateCube(axis, angle) {
-            scene.children.forEach(child => {
-                if (child instanceof THREE.Group) {
-                    child.rotation[axis] += angle;
+        function rotateLayer(axis, index, angle) {
+            cubeGroup.children.forEach(cube => {
+                if (Math.round(cube.position[axis]) === index) {
+                    const rotation = new THREE.Quaternion();
+                    rotation.setFromAxisAngle(new THREE.Vector3(
+                        axis === 'x' ? 1 : 0,
+                        axis === 'y' ? 1 : 0,
+                        axis === 'z' ? 1 : 0
+                    ), angle);
+                    cube.applyQuaternion(rotation);
                 }
             });
+        }
+
+        function rotateView(axis, angle) {
+            const rotation = new THREE.Quaternion();
+            rotation.setFromAxisAngle(new THREE.Vector3(
+                axis === 'x' ? 1 : 0,
+                axis === 'y' ? 1 : 0,
+                axis === 'z' ? 1 : 0
+            ), angle);
+            camera.quaternion.premultiply(rotation);
         }
 
         function updateRotation() {
@@ -142,15 +137,11 @@
             const yRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('yRotation').value));
             const zRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('zRotation').value));
 
-            scene.children.forEach(child => {
-                if (child instanceof THREE.Group) {
-                    child.rotation.set(
-                        xRotation,
-                        yRotation,
-                        zRotation
-                    );
-                }
-            });
+            camera.rotation.set(
+                xRotation,
+                yRotation,
+                zRotation
+            );
         }
 
         document.getElementById('xRotation').addEventListener('input', updateRotation);
@@ -158,15 +149,51 @@
         document.getElementById('zRotation').addEventListener('input', updateRotation);
 
         document.getElementById('rotateX').addEventListener('click', () => {
-            rotateCube('x', Math.PI / 8);
+            rotateView('x', Math.PI / 4);
         });
 
         document.getElementById('rotateY').addEventListener('click', () => {
-            rotateCube('y', Math.PI / 8);
+            rotateView('y', Math.PI / 4);
         });
 
         document.getElementById('rotateZ').addEventListener('click', () => {
-            rotateCube('z', Math.PI / 8);
+            rotateView('z', Math.PI / 4);
+        });
+
+        document.getElementById('rotateLayerX0').addEventListener('click', () => {
+            rotateLayer('x', -1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerX1').addEventListener('click', () => {
+            rotateLayer('x', 0, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerX2').addEventListener('click', () => {
+            rotateLayer('x', 1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerY0').addEventListener('click', () => {
+            rotateLayer('y', -1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerY1').addEventListener('click', () => {
+            rotateLayer('y', 0, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerY2').addEventListener('click', () => {
+            rotateLayer('y', 1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerZ0').addEventListener('click', () => {
+            rotateLayer('z', -1, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerZ1').addEventListener('click', () => {
+            rotateLayer('z', 0, Math.PI / 2);
+        });
+
+        document.getElementById('rotateLayerZ2').addEventListener('click', () => {
+            rotateLayer('z', 1, Math.PI / 2);
         });
 
         function animate() {
