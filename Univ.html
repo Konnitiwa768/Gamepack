@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe Sandbox 2D Simulation with Matter.js</title>
+    <style>
+        /* ダークモードのスタイル */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #controlPanel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        button, input, select {
+            margin-top: 5px;
+            color: black;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- コントロールパネル -->
+    <div id="controlPanel">
+        <button id="addPlanet">惑星を追加</button>
+        <button id="clearPlanets">すべて削除</button>
+        <div>
+            <label for="massSlider">質量: </label>
+            <input type="range" id="massSlider" min="1" max="100" value="10">
+        </div>
+        <div>
+            <label for="speedSlider">速度: </label>
+            <input type="range" id="speedSlider" min="-10" max="10" value="0">
+        </div>
+        <div>
+            <label for="planetType">惑星の種類: </label>
+            <select id="planetType">
+                <option value="small">小 (青)</option>
+                <option value="medium">中 (緑)</option>
+                <option value="large">大 (赤)</option>
+            </select>
+        </div>
+        <div>
+            <label for="oxygenCount">酸素の数 (O₂): </label>
+            <input type="range" id="oxygenCount" min="0" max="20" value="5">
+        </div>
+        <div>
+            <label for="hydrogenCount">水素の数 (H₂): </label>
+            <input type="range" id="hydrogenCount" min="0" max="20" value="10">
+        </div>
+        <button id="generateMolecules">分子を生成</button>
+    </div>
+    <canvas id="simulationCanvas"></canvas>
+
+    <!-- Matter.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.17.1/build/matter.min.js"></script>
+    <script>
+        // Matter.jsの初期設定
+        const canvas = document.getElementById('simulationCanvas');
+        const engine = Matter.Engine.create();
+        const render = Matter.Render.create({
+            canvas: canvas,
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                background: '#1a1a1a',
+                wireframes: false // グラフィカルに表示
+            }
+        });
+
+        // 惑星と分子のリスト
+        const planets = [];
+        const molecules = [];
+        const massSlider = document.getElementById('massSlider');
+        const speedSlider = document.getElementById('speedSlider');
+        const planetTypeSelect = document.getElementById('planetType');
+        const oxygenCountSlider = document.getElementById('oxygenCount');
+        const hydrogenCountSlider = document.getElementById('hydrogenCount');
+        const addPlanetButton = document.getElementById('addPlanet');
+        const clearPlanetsButton = document.getElementById('clearPlanets');
+        const generateMoleculesButton = document.getElementById('generateMolecules');
+
+        // 惑星を生成する関数
+        function createPlanet(x, y, mass, speed, type) {
+            let radius, color;
+            switch(type) {
+                case 'small':
+                    radius = 10;
+                    color = 'blue';
+                    break;
+                case 'medium':
+                    radius = 20;
+                    color = 'green';
+                    break;
+                case 'large':
+                    radius = 30;
+                    color = 'red';
+                    break;
+                default:
+                    radius = 10;
+                    color = 'blue';
+            }
+
+            // Matter.jsの円形ボディとして惑星を作成
+            const planet = Matter.Bodies.circle(x, y, radius, {
+                mass: mass / 10, // 質量をスライダーの値で設定
+                restitution: 0.8, // 反発係数
+                render: {
+                    fillStyle: color // 惑星の色
+                }
+            });
+            // 初期速度を設定
+            Matter.Body.setVelocity(planet, { x: speed, y: speed });
+            Matter.World.add(engine.world, planet);
+            planets.push(planet);
+        }
+
+        // 分子を生成する関数
+        function createMolecule(x, y, radius, color) {
+            const molecule = Matter.Bodies.circle(x, y, radius, {
+                restitution: 0.8,
+                render: {
+                    fillStyle: color // 分子の色
+                }
+            });
+            Matter.World.add(engine.world, molecule);
+            molecules.push(molecule);
+        }
+
+        // 分子を生成するボタンのクリックイベント
+        generateMoleculesButton.addEventListener('click', () => {
+            // 既存の分子を削除
+            molecules.forEach(molecule => Matter.World.remove(engine.world, molecule));
+            molecules.length = 0;
+
+            const oxygenCount = oxygenCountSlider.value;
+            const hydrogenCount = hydrogenCountSlider.value;
+
+            // 酸素分子を生成 (O₂)
+            for (let i = 0; i < oxygenCount; i++) {
+                const x = Math.random() * window.innerWidth;
+                const y = Math.random() * window.innerHeight;
+                createMolecule(x, y, 5, 'cyan'); // 青色で小さなサイズの酸素分子
+            }
+
+            // 水素分子を生成 (H₂)
+            for (let i = 0; i < hydrogenCount; i++) {
+                const x = Math.random() * window.innerWidth;
+                const y = Math.random() * window.innerHeight;
+                createMolecule(x, y, 3, 'yellow'); // 黄色でさらに小さなサイズの水素分子
+            }
+        });
+
+        // 惑星を追加するボタンのクリックイベント
+        addPlanetButton.addEventListener('click', () => {
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            const mass = massSlider.value;
+            const speed = speedSlider.value;
+            const type = planetTypeSelect.value;
+            createPlanet(x, y, mass, speed, type);
+        });
+
+        // すべての惑星を削除するボタンのクリックイベント
+        clearPlanetsButton.addEventListener('click', () => {
+            planets.forEach(planet => Matter.World.remove(engine.world, planet));
+            planets.length = 0; // 配列をクリア
+            molecules.forEach(molecule => Matter.World.remove(engine.world, molecule));
+            molecules.length = 0; // 配列をクリア
+        });
+
+        // Matter.jsエンジンとレンダラーを実行
+        Matter.Render.run(render);
+        Matter.Engine.run(engine);
+
+        // ウィンドウサイズに合わせてキャンバスをリサイズ
+        window.addEventListener('resize', () => {
+            render.canvas.width = window.innerWidth;
+            render.canvas.height = window.innerHeight;
+            Matter.Render.setPixelRatio(render, window.devicePixelRatio);
+        });
+    </script>
+</body>
+</html>
