@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universe Sandbox 2D Simulation with Matter.js</title>
     <style>
-        /* ダークモードのスタイル */
         body {
             margin: 0;
             overflow: hidden;
@@ -37,6 +36,7 @@
     <!-- コントロールパネル -->
     <div id="controlPanel">
         <button id="addPlanet">惑星を追加</button>
+        <button id="addMagnetStar">マグネットスターを追加</button>
         <button id="clearPlanets">すべて削除</button>
         <div>
             <label for="massSlider">質量: </label>
@@ -54,22 +54,12 @@
                 <option value="large">大 (赤)</option>
             </select>
         </div>
-        <div>
-            <label for="oxygenCount">酸素の数 (O₂): </label>
-            <input type="range" id="oxygenCount" min="0" max="20" value="5">
-        </div>
-        <div>
-            <label for="hydrogenCount">水素の数 (H₂): </label>
-            <input type="range" id="hydrogenCount" min="0" max="20" value="10">
-        </div>
-        <button id="generateMolecules">分子を生成</button>
     </div>
     <canvas id="simulationCanvas"></canvas>
 
     <!-- Matter.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/matter-js@0.17.1/build/matter.min.js"></script>
     <script>
-        // Matter.jsの初期設定
         const canvas = document.getElementById('simulationCanvas');
         const engine = Matter.Engine.create();
         const render = Matter.Render.create({
@@ -79,21 +69,18 @@
                 width: window.innerWidth,
                 height: window.innerHeight,
                 background: '#1a1a1a',
-                wireframes: false // グラフィカルに表示
+                wireframes: false
             }
         });
 
-        // 惑星と分子のリスト
         const planets = [];
-        const molecules = [];
+        const magnetStars = [];
         const massSlider = document.getElementById('massSlider');
         const speedSlider = document.getElementById('speedSlider');
         const planetTypeSelect = document.getElementById('planetType');
-        const oxygenCountSlider = document.getElementById('oxygenCount');
-        const hydrogenCountSlider = document.getElementById('hydrogenCount');
         const addPlanetButton = document.getElementById('addPlanet');
+        const addMagnetStarButton = document.getElementById('addMagnetStar');
         const clearPlanetsButton = document.getElementById('clearPlanets');
-        const generateMoleculesButton = document.getElementById('generateMolecules');
 
         // 惑星を生成する関数
         function createPlanet(x, y, mass, speed, type) {
@@ -116,54 +103,53 @@
                     color = 'blue';
             }
 
-            // Matter.jsの円形ボディとして惑星を作成
             const planet = Matter.Bodies.circle(x, y, radius, {
-                mass: mass / 10, // 質量をスライダーの値で設定
-                restitution: 0.8, // 反発係数
-                render: {
-                    fillStyle: color // 惑星の色
-                }
+                mass: mass / 10,
+                restitution: 0.9,
+                render: { fillStyle: color }
             });
-            // 初期速度を設定
+
             Matter.Body.setVelocity(planet, { x: speed, y: speed });
             Matter.World.add(engine.world, planet);
             planets.push(planet);
         }
 
-        // 分子を生成する関数
-        function createMolecule(x, y, radius, color) {
-            const molecule = Matter.Bodies.circle(x, y, radius, {
-                restitution: 0.8,
-                render: {
-                    fillStyle: color // 分子の色
-                }
+        // マグネットスターを生成する関数
+        function createMagnetStar(x, y) {
+            const magnetStar = Matter.Bodies.circle(x, y, 40, {
+                isStatic: true, // 静止した星
+                render: { fillStyle: 'orange' }
             });
-            Matter.World.add(engine.world, molecule);
-            molecules.push(molecule);
+
+            // マグネットスターの引力範囲を設定
+            Matter.Events.on(engine, 'beforeUpdate', function() {
+                planets.forEach(planet => {
+                    const distance = Matter.Vector.magnitude(Matter.Vector.sub(magnetStar.position, planet.position));
+                    if (distance < 300) {
+                        const forceMagnitude = 0.00002 * magnetStar.mass * planet.mass / Math.pow(distance, 2);
+                        const force = Matter.Vector.normalise(Matter.Vector.sub(magnetStar.position, planet.position));
+                        Matter.Body.applyForce(planet, planet.position, Matter.Vector.mult(force, forceMagnitude));
+                    }
+                });
+            });
+
+            Matter.World.add(engine.world, magnetStar);
+            magnetStars.push(magnetStar);
         }
 
-        // 分子を生成するボタンのクリックイベント
-        generateMoleculesButton.addEventListener('click', () => {
-            // 既存の分子を削除
-            molecules.forEach(molecule => Matter.World.remove(engine.world, molecule));
-            molecules.length = 0;
+        // 画面端でバウンドする機能を追加
+        Matter.Events.on(engine, 'beforeUpdate', function() {
+            planets.forEach(planet => {
+                const { x, y } = planet.position;
+                const radius = planet.circleRadius;
 
-            const oxygenCount = oxygenCountSlider.value;
-            const hydrogenCount = hydrogenCountSlider.value;
-
-            // 酸素分子を生成 (O₂)
-            for (let i = 0; i < oxygenCount; i++) {
-                const x = Math.random() * window.innerWidth;
-                const y = Math.random() * window.innerHeight;
-                createMolecule(x, y, 5, 'cyan'); // 青色で小さなサイズの酸素分子
-            }
-
-            // 水素分子を生成 (H₂)
-            for (let i = 0; i < hydrogenCount; i++) {
-                const x = Math.random() * window.innerWidth;
-                const y = Math.random() * window.innerHeight;
-                createMolecule(x, y, 3, 'yellow'); // 黄色でさらに小さなサイズの水素分子
-            }
+                if (x - radius < 0 || x + radius > window.innerWidth) {
+                    Matter.Body.setVelocity(planet, { x: -planet.velocity.x, y: planet.velocity.y });
+                }
+                if (y - radius < 0 || y + radius > window.innerHeight) {
+                    Matter.Body.setVelocity(planet, { x: planet.velocity.x, y: -planet.velocity.y });
+                }
+            });
         });
 
         // 惑星を追加するボタンのクリックイベント
@@ -176,19 +162,24 @@
             createPlanet(x, y, mass, speed, type);
         });
 
+        // マグネットスターを追加するボタンのクリックイベント
+        addMagnetStarButton.addEventListener('click', () => {
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            createMagnetStar(x, y);
+        });
+
         // すべての惑星を削除するボタンのクリックイベント
         clearPlanetsButton.addEventListener('click', () => {
             planets.forEach(planet => Matter.World.remove(engine.world, planet));
-            planets.length = 0; // 配列をクリア
-            molecules.forEach(molecule => Matter.World.remove(engine.world, molecule));
-            molecules.length = 0; // 配列をクリア
+            planets.length = 0;
+            magnetStars.forEach(star => Matter.World.remove(engine.world, star));
+            magnetStars.length = 0;
         });
 
-        // Matter.jsエンジンとレンダラーを実行
         Matter.Render.run(render);
         Matter.Engine.run(engine);
 
-        // ウィンドウサイズに合わせてキャンバスをリサイズ
         window.addEventListener('resize', () => {
             render.canvas.width = window.innerWidth;
             render.canvas.height = window.innerHeight;
