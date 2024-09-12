@@ -36,7 +36,6 @@
     <!-- コントロールパネル -->
     <div id="controlPanel">
         <button id="addPlanet">惑星を追加</button>
-        <button id="addMagnetStar">マグネットスターを追加</button>
         <button id="clearPlanets">すべて削除</button>
         <div>
             <label for="massSlider">質量: </label>
@@ -55,6 +54,7 @@
                 <option value="ice">アイスプラネット (白)</option>
                 <option value="gas">ガスプラネット (黄)</option>
                 <option value="metal">メタルプラネット (銀)</option>
+                <option value="magnet">マグネットスター (オレンジ)</option>
             </select>
         </div>
     </div>
@@ -77,17 +77,15 @@
         });
 
         const planets = [];
-        const magnetStars = [];
         const massSlider = document.getElementById('massSlider');
         const speedSlider = document.getElementById('speedSlider');
         const planetTypeSelect = document.getElementById('planetType');
         const addPlanetButton = document.getElementById('addPlanet');
-        const addMagnetStarButton = document.getElementById('addMagnetStar');
         const clearPlanetsButton = document.getElementById('clearPlanets');
 
         // 惑星を生成する関数
         function createPlanet(x, y, mass, speed, type) {
-            let radius, color;
+            let radius, color, isStatic = false;
             switch(type) {
                 case 'small':
                     radius = 10;
@@ -113,6 +111,11 @@
                     radius = 20;
                     color = 'silver';
                     break;
+                case 'magnet':
+                    radius = 40;
+                    color = 'orange';
+                    isStatic = true;
+                    break;
                 default:
                     radius = 10;
                     color = 'blue';
@@ -121,60 +124,32 @@
             const planet = Matter.Bodies.circle(x, y, radius, {
                 mass: mass / 10,
                 restitution: 0.9,
+                isStatic: isStatic,
                 render: { fillStyle: color }
             });
 
-            Matter.Body.setVelocity(planet, { x: speed, y: speed });
+            if (!isStatic) {
+                Matter.Body.setVelocity(planet, { x: speed, y: speed });
+            }
+
             Matter.World.add(engine.world, planet);
             planets.push(planet);
 
-            // Large星のランダムな移動と衝突時の反動
-            if (type === 'large') {
-                Matter.Body.setVelocity(planet, { x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 5 });
-                setInterval(() => {
-                    Matter.Body.setPosition(planet, {
-                        x: Math.random() * window.innerWidth,
-                        y: Math.random() * window.innerHeight
-                    });
-                }, 1000);
-                
-                // 衝突時の反動
-                Matter.Events.on(engine, 'collisionStart', function(event) {
-                    const pairs = event.pairs;
-                    pairs.forEach(pair => {
-                        if (pair.bodyA === planet || pair.bodyB === planet) {
-                            const other = pair.bodyA === planet ? pair.bodyB : pair.bodyA;
-                            if (other !== magnetStars) {
-                                const force = Matter.Vector.mult(Matter.Vector.normalise(Matter.Vector.sub(planet.position, other.position)), 0.05);
-                                Matter.Body.applyForce(other, other.position, force);
+            // マグネットスターの場合、引力を設定
+            if (type === 'magnet') {
+                Matter.Events.on(engine, 'beforeUpdate', function() {
+                    planets.forEach(otherPlanet => {
+                        if (otherPlanet !== planet && !otherPlanet.isStatic) {
+                            const distance = Matter.Vector.magnitude(Matter.Vector.sub(planet.position, otherPlanet.position));
+                            if (distance < 300) { // 引力の範囲
+                                const forceMagnitude = 0.0001 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
+                                const force = Matter.Vector.normalise(Matter.Vector.sub(planet.position, otherPlanet.position));
+                                Matter.Body.applyForce(otherPlanet, otherPlanet.position, Matter.Vector.mult(force, forceMagnitude));
                             }
                         }
                     });
                 });
             }
-        }
-
-        // マグネットスターを生成する関数
-        function createMagnetStar(x, y) {
-            const magnetStar = Matter.Bodies.circle(x, y, 40, {
-                isStatic: true, // 静止した星
-                render: { fillStyle: 'orange' }
-            });
-
-            // マグネットスターの引力範囲を設定
-            Matter.Events.on(engine, 'beforeUpdate', function() {
-                planets.forEach(planet => {
-                    const distance = Matter.Vector.magnitude(Matter.Vector.sub(magnetStar.position, planet.position));
-                    if (distance < 300 && distance > 50) { // 近づきすぎない範囲で引き寄せる
-                        const forceMagnitude = 0.0001 * magnetStar.mass * planet.mass / Math.pow(distance, 2);
-                        const force = Matter.Vector.normalise(Matter.Vector.sub(magnetStar.position, planet.position));
-                        Matter.Body.applyForce(planet, planet.position, Matter.Vector.mult(force, forceMagnitude));
-                    }
-                });
-            });
-
-            Matter.World.add(engine.world, magnetStar);
-            magnetStars.push(magnetStar);
         }
 
         // 画面端でバウンドする機能を追加
@@ -184,10 +159,12 @@
                 const radius = planet.circleRadius;
 
                 if (x - radius < 0 || x + radius > window.innerWidth) {
-                    Matter.Body.setVelocity(planet, { x: -planet.velocity.x, y: planet.velocity.y });
+                    Matter.Body.setPosition(planet, { x: Math.max(radius, Math.min(window.innerWidth - radius, x)), y });
+                    Matter.Body.setVelocity(planet, { x: -planet.velocity.x * 0.8, y: planet.velocity.y });
                 }
                 if (y - radius < 0 || y + radius > window.innerHeight) {
-                    Matter.Body.setVelocity(planet, { x: planet.velocity.x, y: -planet.velocity.y });
+                    Matter.Body.setPosition(planet, { x, y: Math.max(radius, Math.min(window.innerHeight - radius, y)) });
+                    Matter.Body.setVelocity(planet, { x: planet.velocity.x, y: -planet.velocity.y * 0.8 });
                 }
             });
         });
@@ -202,19 +179,10 @@
             createPlanet(x, y, mass, speed, type);
         });
 
-        // マグネットスターを追加するボタンのクリックイベント
-        addMagnetStarButton.addEventListener('click', () => {
-            const x = Math.random() * window.innerWidth;
-            const y = Math.random() * window.innerHeight;
-            createMagnetStar(x, y);
-        });
-
         // すべての惑星を削除するボタンのクリックイベント
         clearPlanetsButton.addEventListener('click', () => {
             planets.forEach(planet => Matter.World.remove(engine.world, planet));
             planets.length = 0;
-            magnetStars.forEach(star => Matter.World.remove(engine.world, star));
-            magnetStars.length = 0;
         });
 
         Matter.Render.run(render);
