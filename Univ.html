@@ -52,6 +52,9 @@
                 <option value="small">小 (青)</option>
                 <option value="medium">中 (緑)</option>
                 <option value="large">大 (赤)</option>
+                <option value="ice">アイスプラネット (白)</option>
+                <option value="gas">ガスプラネット (黄)</option>
+                <option value="metal">メタルプラネット (銀)</option>
             </select>
         </div>
     </div>
@@ -98,6 +101,18 @@
                     radius = 30;
                     color = 'red';
                     break;
+                case 'ice':
+                    radius = 15;
+                    color = 'white';
+                    break;
+                case 'gas':
+                    radius = 25;
+                    color = 'yellow';
+                    break;
+                case 'metal':
+                    radius = 20;
+                    color = 'silver';
+                    break;
                 default:
                     radius = 10;
                     color = 'blue';
@@ -125,8 +140,8 @@
             Matter.Events.on(engine, 'beforeUpdate', function() {
                 planets.forEach(planet => {
                     const distance = Matter.Vector.magnitude(Matter.Vector.sub(magnetStar.position, planet.position));
-                    if (distance < 300) {
-                        const forceMagnitude = 0.00002 * magnetStar.mass * planet.mass / Math.pow(distance, 2);
+                    if (distance < 300 && distance > 50) { // 近づきすぎない範囲で引き寄せる
+                        const forceMagnitude = 0.0001 * magnetStar.mass * planet.mass / Math.pow(distance, 2);
                         const force = Matter.Vector.normalise(Matter.Vector.sub(magnetStar.position, planet.position));
                         Matter.Body.applyForce(planet, planet.position, Matter.Vector.mult(force, forceMagnitude));
                     }
