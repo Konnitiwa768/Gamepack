@@ -3,206 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>インタラクティブ3Dルービックキューブ</title>
+    <title>Universe Sandbox 2D Simulation with Matter.js</title>
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
-        #controls {
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #controlPanel {
             position: absolute;
             top: 10px;
             left: 10px;
-            z-index: 10;
-            color: #fff;
-        }
-        button, input[type="range"] {
-            margin: 5px;
+            background: rgba(0, 0, 0, 0.7);
             padding: 10px;
-            background-color: #333;
-            color: #fff;
-            border: none;
-            cursor: pointer;
+            border-radius: 5px;
         }
-        button:hover, input[type="range"]:hover {
-            background-color: #555;
+
+        button, input, select {
+            margin-top: 5px;
+            color: black;
         }
-        input[type="range"] {
-            width: 150px;
+
+        canvas {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <button id="rotateX">X軸回転</button>
-        <button id="rotateY">Y軸回転</button>
-        <button id="rotateZ">Z軸回転</button>
-        <button id="rotateLayerX0">X方向層0回転</button>
-        <button id="rotateLayerX1">X方向層1回転</button>
-        <button id="rotateLayerX2">X方向層2回転</button>
-        <button id="rotateLayerY0">Y方向層0回転</button>
-        <button id="rotateLayerY1">Y方向層1回転</button>
-        <button id="rotateLayerY2">Y方向層2回転</button>
-        <button id="rotateLayerZ0">Z方向層0回転</button>
-        <button id="rotateLayerZ1">Z方向層1回転</button>
-        <button id="rotateLayerZ2">Z方向層2回転</button>
-        <br>
-        <label for="xRotation">X軸回転:</label>
-        <input id="xRotation" type="range" min="-180" max="180" value="0" step="1">
-        <br>
-        <label for="yRotation">Y軸回転:</label>
-        <input id="yRotation" type="range" min="-180" max="180" value="0" step="1">
-        <br>
-        <label for="zRotation">Z軸回転:</label>
-        <input id="zRotation" type="range" min="-180" max="180" value="0" step="1">
+    <!-- コントロールパネル -->
+    <div id="controlPanel">
+        <button id="addPlanet">惑星を追加</button>
+        <button id="addMagnetStar">マグネットスターを追加</button>
+        <button id="clearPlanets">すべて削除</button>
+        <div>
+            <label for="massSlider">質量: </label>
+            <input type="range" id="massSlider" min="1" max="100" value="10">
+        </div>
+        <div>
+            <label for="speedSlider">速度: </label>
+            <input type="range" id="speedSlider" min="-10" max="10" value="0">
+        </div>
+        <div>
+            <label for="planetType">惑星の種類: </label>
+            <select id="planetType">
+                <option value="small">小 (青)</option>
+                <option value="medium">中 (緑)</option>
+                <option value="large">大 (赤)</option>
+                <option value="ice">アイスプラネット (白)</option>
+                <option value="gas">ガスプラネット (黄)</option>
+                <option value="metal">メタルプラネット (銀)</option>
+            </select>
+        </div>
     </div>
+    <canvas id="simulationCanvas"></canvas>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Matter.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.17.1/build/matter.min.js"></script>
     <script>
-        // シーン、カメラ、レンダラーのセットアップ
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        // 3x3x3ルービックキューブの作成
-        const cubeSize = 1;
-        const gap = 0.1;
-        const colors = {
-            front: 0xff0000,  // 赤
-            back: 0xffa500,   // オレンジ
-            top: 0x00ff00,    // 緑
-            bottom: 0x0000ff, // 青
-            left: 0xffff00,   // 黄
-            right: 0xffffff   // 白
-        };
-        const cubes = [];
-        const cubeGroup = new THREE.Group();
-
-        function createCube(x, y, z) {
-            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-            const materials = [
-                new THREE.MeshBasicMaterial({ color: (x === 1) ? colors.right : colors.front, side: THREE.DoubleSide }), // right
-                new THREE.MeshBasicMaterial({ color: (x === -1) ? colors.left : colors.front, side: THREE.DoubleSide }), // left
-                new THREE.MeshBasicMaterial({ color: (y === 1) ? colors.top : colors.front, side: THREE.DoubleSide }), // top
-                new THREE.MeshBasicMaterial({ color: (y === -1) ? colors.bottom : colors.front, side: THREE.DoubleSide }), // bottom
-                new THREE.MeshBasicMaterial({ color: (z === 1) ? colors.back : colors.front, side: THREE.DoubleSide }), // back
-                new THREE.MeshBasicMaterial({ color: (z === -1) ? colors.front : colors.front, side: THREE.DoubleSide }) // front
-            ];
-            const cube = new THREE.Mesh(geometry, materials);
-            cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
-            cubeGroup.add(cube);
-            cubes.push(cube);
-        }
-
-        for (let x = -1; x <= 1; x++) {
-            for (let y = -1; y <= 1; y++) {
-                for (let z = -1; z <= 1; z++) {
-                    createCube(x, y, z);
-                }
+        const canvas = document.getElementById('simulationCanvas');
+        const engine = Matter.Engine.create();
+        const render = Matter.Render.create({
+            canvas: canvas,
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                background: '#1a1a1a',
+                wireframes: false
             }
+        });
+
+        const planets = [];
+        const magnetStars = [];
+        const massSlider = document.getElementById('massSlider');
+        const speedSlider = document.getElementById('speedSlider');
+        const planetTypeSelect = document.getElementById('planetType');
+        const addPlanetButton = document.getElementById('addPlanet');
+        const addMagnetStarButton = document.getElementById('addMagnetStar');
+        const clearPlanetsButton = document.getElementById('clearPlanets');
+
+        // 惑星を生成する関数
+        function createPlanet(x, y, mass, speed, type) {
+            let radius, color;
+            switch(type) {
+                case 'small':
+                    radius = 10;
+                    color = 'blue';
+                    break;
+                case 'medium':
+                    radius = 20;
+                    color = 'green';
+                    break;
+                case 'large':
+                    radius = 30;
+                    color = 'red';
+                    break;
+                case 'ice':
+                    radius = 15;
+                    color = 'white';
+                    break;
+                case 'gas':
+                    radius = 25;
+                    color = 'yellow';
+                    break;
+                case 'metal':
+                    radius = 20;
+                    color = 'silver';
+                    break;
+                default:
+                    radius = 10;
+                    color = 'blue';
+            }
+
+            const planet = Matter.Bodies.circle(x, y, radius, {
+                mass: mass / 10,
+                restitution: 0.9,
+                render: { fillStyle: color }
+            });
+
+            Matter.Body.setVelocity(planet, { x: speed, y: speed });
+            Matter.World.add(engine.world, planet);
+            planets.push(planet);
         }
 
-        scene.add(cubeGroup);
-        camera.position.z = 6;
+        // マグネットスターを生成する関数
+        function createMagnetStar(x, y) {
+            const magnetStar = Matter.Bodies.circle(x, y, 40, {
+                isStatic: true, // 静止した星
+                render: { fillStyle: 'orange' }
+            });
 
-        function rotateLayer(axis, index, angle) {
-            cubeGroup.children.forEach(cube => {
-                if (Math.round(cube.position[axis]) === index) {
-                    const rotation = new THREE.Quaternion();
-                    rotation.setFromAxisAngle(new THREE.Vector3(
-                        axis === 'x' ? 1 : 0,
-                        axis === 'y' ? 1 : 0,
-                        axis === 'z' ? 1 : 0
-                    ), angle);
-                    cube.applyQuaternion(rotation);
+            // マグネットスターの引力範囲を設定
+            Matter.Events.on(engine, 'beforeUpdate', function() {
+                planets.forEach(planet => {
+                    const distance = Matter.Vector.magnitude(Matter.Vector.sub(magnetStar.position, planet.position));
+                    if (distance < 300 && distance > 50) { // 近づきすぎない範囲で引き寄せる
+                        const forceMagnitude = 0.0001 * magnetStar.mass * planet.mass / Math.pow(distance, 2);
+                        const force = Matter.Vector.normalise(Matter.Vector.sub(magnetStar.position, planet.position));
+                        Matter.Body.applyForce(planet, planet.position, Matter.Vector.mult(force, forceMagnitude));
+                    }
+                });
+            });
+
+            Matter.World.add(engine.world, magnetStar);
+            magnetStars.push(magnetStar);
+        }
+
+        // 画面端でバウンドする機能を追加
+        Matter.Events.on(engine, 'beforeUpdate', function() {
+            planets.forEach(planet => {
+                const { x, y } = planet.position;
+                const radius = planet.circleRadius;
+
+                if (x - radius < 0 || x + radius > window.innerWidth) {
+                    Matter.Body.setVelocity(planet, { x: -planet.velocity.x, y: planet.velocity.y });
+                }
+                if (y - radius < 0 || y + radius > window.innerHeight) {
+                    Matter.Body.setVelocity(planet, { x: planet.velocity.x, y: -planet.velocity.y });
                 }
             });
-        }
-
-        function rotateView(axis, angle) {
-            const rotation = new THREE.Quaternion();
-            rotation.setFromAxisAngle(new THREE.Vector3(
-                axis === 'x' ? 1 : 0,
-                axis === 'y' ? 1 : 0,
-                axis === 'z' ? 1 : 0
-            ), angle);
-            camera.quaternion.premultiply(rotation);
-        }
-
-        function updateRotation() {
-            const xRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('xRotation').value));
-            const yRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('yRotation').value));
-            const zRotation = THREE.MathUtils.degToRad(parseFloat(document.getElementById('zRotation').value));
-
-            camera.rotation.set(
-                xRotation,
-                yRotation,
-                zRotation
-            );
-        }
-
-        document.getElementById('xRotation').addEventListener('input', updateRotation);
-        document.getElementById('yRotation').addEventListener('input', updateRotation);
-        document.getElementById('zRotation').addEventListener('input', updateRotation);
-
-        document.getElementById('rotateX').addEventListener('click', () => {
-            rotateView('x', Math.PI / 4);
         });
 
-        document.getElementById('rotateY').addEventListener('click', () => {
-            rotateView('y', Math.PI / 4);
+        // 惑星を追加するボタンのクリックイベント
+        addPlanetButton.addEventListener('click', () => {
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            const mass = massSlider.value;
+            const speed = speedSlider.value;
+            const type = planetTypeSelect.value;
+            createPlanet(x, y, mass, speed, type);
         });
 
-        document.getElementById('rotateZ').addEventListener('click', () => {
-            rotateView('z', Math.PI / 4);
+        // マグネットスターを追加するボタンのクリックイベント
+        addMagnetStarButton.addEventListener('click', () => {
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            createMagnetStar(x, y);
         });
 
-        document.getElementById('rotateLayerX0').addEventListener('click', () => {
-            rotateLayer('x', -1, Math.PI / 2);
+        // すべての惑星を削除するボタンのクリックイベント
+        clearPlanetsButton.addEventListener('click', () => {
+            planets.forEach(planet => Matter.World.remove(engine.world, planet));
+            planets.length = 0;
+            magnetStars.forEach(star => Matter.World.remove(engine.world, star));
+            magnetStars.length = 0;
         });
 
-        document.getElementById('rotateLayerX1').addEventListener('click', () => {
-            rotateLayer('x', 0, Math.PI / 2);
-        });
-
-        document.getElementById('rotateLayerX2').addEventListener('click', () => {
-            rotateLayer('x', 1, Math.PI / 2);
-        });
-
-        document.getElementById('rotateLayerY0').addEventListener('click', () => {
-            rotateLayer('y', -1, Math.PI / 2);
-        });
-
-        document.getElementById('rotateLayerY1').addEventListener('click', () => {
-            rotateLayer('y', 0, Math.PI / 2);
-        });
-
-        document.getElementById('rotateLayerY2').addEventListener('click', () => {
-            rotateLayer('y', 1, Math.PI / 2);
-        });
-
-        document.getElementById('rotateLayerZ0').addEventListener('click', () => {
-            rotateLayer('z', -1, Math.PI / 2);
-        });
-
-        document.getElementById('rotateLayerZ1').addEventListener('click', () => {
-            rotateLayer('z', 0, Math.PI / 2);
-        });
-
-        document.getElementById('rotateLayerZ2').addEventListener('click', () => {
-            rotateLayer('z', 1, Math.PI / 2);
-        });
-
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-        animate();
+        Matter.Render.run(render);
+        Matter.Engine.run(engine);
 
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            render.canvas.width = window.innerWidth;
+            render.canvas.height = window.innerHeight;
+            Matter.Render.setPixelRatio(render, window.devicePixelRatio);
         });
     </script>
 </body>
