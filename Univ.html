@@ -127,6 +127,31 @@
             Matter.Body.setVelocity(planet, { x: speed, y: speed });
             Matter.World.add(engine.world, planet);
             planets.push(planet);
+
+            // Large星のランダムな移動と衝突時の反動
+            if (type === 'large') {
+                Matter.Body.setVelocity(planet, { x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 5 });
+                setInterval(() => {
+                    Matter.Body.setPosition(planet, {
+                        x: Math.random() * window.innerWidth,
+                        y: Math.random() * window.innerHeight
+                    });
+                }, 1000);
+                
+                // 衝突時の反動
+                Matter.Events.on(engine, 'collisionStart', function(event) {
+                    const pairs = event.pairs;
+                    pairs.forEach(pair => {
+                        if (pair.bodyA === planet || pair.bodyB === planet) {
+                            const other = pair.bodyA === planet ? pair.bodyB : pair.bodyA;
+                            if (other !== magnetStars) {
+                                const force = Matter.Vector.mult(Matter.Vector.normalise(Matter.Vector.sub(planet.position, other.position)), 0.05);
+                                Matter.Body.applyForce(other, other.position, force);
+                            }
+                        }
+                    });
+                });
+            }
         }
 
         // マグネットスターを生成する関数
