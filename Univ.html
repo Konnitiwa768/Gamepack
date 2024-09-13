@@ -129,7 +129,7 @@
             });
 
             if (!isStatic) {
-                Matter.Body.setVelocity(planet, { x: speed, y: speed });
+                Matter.Body.setVelocity(planet, { x: (Math.random() - 0.5) * 2 * speed, y: (Math.random() - 0.5) * 2 * speed });
             }
 
             Matter.World.add(engine.world, planet);
@@ -141,8 +141,8 @@
                     planets.forEach(otherPlanet => {
                         if (otherPlanet !== planet && !otherPlanet.isStatic) {
                             const distance = Matter.Vector.magnitude(Matter.Vector.sub(planet.position, otherPlanet.position));
-                            if (distance < 300) { // 引力の範囲
-                                const forceMagnitude = 0.0001 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
+                            if (distance < 500) { // 引力の範囲を拡大
+                                const forceMagnitude = 0.0002 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
                                 const force = Matter.Vector.normalise(Matter.Vector.sub(planet.position, otherPlanet.position));
                                 Matter.Body.applyForce(otherPlanet, otherPlanet.position, Matter.Vector.mult(force, forceMagnitude));
                             }
