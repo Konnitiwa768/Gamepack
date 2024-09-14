@@ -55,6 +55,7 @@
                 <option value="gas">ガスプラネット (黄)</option>
                 <option value="metal">メタルプラネット (銀)</option>
                 <option value="magnet">マグネットスター (オレンジ)</option>
+                <option value="neutron">中性子星 (紫)</option>
             </select>
         </div>
     </div>
@@ -116,6 +117,11 @@
                     color = 'orange';
                     isStatic = true;
                     break;
+                case 'neutron':
+                    radius = 15;
+                    color = 'purple';
+                    isStatic = true;
+                    break;
                 default:
                     radius = 10;
                     color = 'blue';
@@ -141,8 +147,24 @@
                     planets.forEach(otherPlanet => {
                         if (otherPlanet !== planet && !otherPlanet.isStatic) {
                             const distance = Matter.Vector.magnitude(Matter.Vector.sub(planet.position, otherPlanet.position));
-                            if (distance < 750) { // 引力の範囲を拡大
+                            if (distance < 500) { // 引力の範囲を拡大
                                 const forceMagnitude = 0.0002 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
+                                const force = Matter.Vector.normalise(Matter.Vector.sub(planet.position, otherPlanet.position));
+                                Matter.Body.applyForce(otherPlanet, otherPlanet.position, Matter.Vector.mult(force, forceMagnitude));
+                            }
+                        }
+                    });
+                });
+            }
+
+            // 中性子星の場合、惑星の引力を無視
+            if (type === 'neutron') {
+                Matter.Events.on(engine, 'beforeUpdate', function() {
+                    planets.forEach(otherPlanet => {
+                        if (otherPlanet !== planet && !otherPlanet.isStatic) {
+                            const distance = Matter.Vector.magnitude(Matter.Vector.sub(planet.position, otherPlanet.position));
+                            if (distance < 500) { // 引力の範囲を拡大
+                                const forceMagnitude = 0.0001 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
                                 const force = Matter.Vector.normalise(Matter.Vector.sub(planet.position, otherPlanet.position));
                                 Matter.Body.applyForce(otherPlanet, otherPlanet.position, Matter.Vector.mult(force, forceMagnitude));
                             }
