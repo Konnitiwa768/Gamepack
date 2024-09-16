@@ -40,9 +40,9 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const carSpeed = 2;
-    let money = 100;
-    let wood = 50;
-    let food = 30;
+    let money = 192;
+    let wood = 70;
+    let food = 40;
     let population = 0;
     let taxRevenue = 0;
 
@@ -184,9 +184,9 @@
     function resetGame() {
       if (confirm('ゲームをリセットしますか？')) {
         localStorage.removeItem('townGameData');
-        money = 100;
-        wood = 50;
-        food = 30;
+        money = 192;
+        wood = 70;
+        food = 40;
         population = 0;
         taxRevenue = 0;
         buildings = [];
