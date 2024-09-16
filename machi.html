@@ -27,11 +27,13 @@
     <button onclick="setBuildingType('school')">学校を建てる</button>
     <button onclick="setBuildingType('office')">オフィスを建てる</button>
     <button onclick="setBuildingType('road')">道路を建てる</button>
+    <button onclick="setBuildingType('sawmill')">伐採場を建てる</button>
     <button onclick="resetGame()">ゲームをリセット</button>
   </div>
   <div id="resources">
-    <p>資源: お金: <span id="money">100</span> 木材: <span id="wood">50</span> 食料: <span id="food">30</span></p>
+    <p>資源: 金: <span id="money">200</span> 木材: <span id="wood">100</span> 鉄: <span id="iron">25</span> 食料: <span id="food">45</span></p>
     <p>人口: <span id="population">0</span></p>
+    <p>学: <span id="education">0</span></p>
     <p>税収: <span id="taxRevenue">0</span></p>
     <p>選択中の建物: <span id="selectedBuilding">なし</span></p>
   </div>
@@ -40,26 +42,32 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const carSpeed = 2;
-    let money = 192;
-    let wood = 70;
-    let food = 40;
+    let money = 200;
+    let wood = 100;
+    let iron = 25;
+    let food = 45;
     let population = 0;
+    let education = 0;
     let taxRevenue = 0;
-
+    let woodArea = {x: 100, y: 100, width: 200, height: 200};
     let buildings = [];
     let cars = [];
     let buildingType = null;
-
+    let sawmills = [];
+    
     function loadGame() {
       const savedData = JSON.parse(localStorage.getItem('townGameData'));
       if (savedData) {
         money = savedData.money;
         wood = savedData.wood;
+        iron = savedData.iron;
         food = savedData.food;
         population = savedData.population;
+        education = savedData.education;
         taxRevenue = savedData.taxRevenue;
         buildings = savedData.buildings;
         cars = savedData.cars;
+        sawmills = savedData.sawmills;
       }
     }
 
@@ -67,11 +75,14 @@
       const gameData = {
         money,
         wood,
+        iron,
         food,
         population,
+        education,
         taxRevenue,
         buildings,
-        cars
+        cars,
+        sawmills
       };
       localStorage.setItem('townGameData', JSON.stringify(gameData));
     }
@@ -79,7 +90,9 @@
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       updateTimeOfDay();
+      drawWoodArea();
       drawBuildings();
+      drawSawmills();
       drawCars();
       updateResources();
       saveGame();
@@ -93,6 +106,11 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    function drawWoodArea() {
+      ctx.fillStyle = 'darkgreen';
+      ctx.fillRect(woodArea.x, woodArea.y, woodArea.width, woodArea.height);
+    }
+
     function drawBuildings() {
       buildings.forEach(building => {
         ctx.fillStyle = building.color;
@@ -101,6 +119,13 @@
           ctx.fillStyle = 'gray';
           ctx.fillRect(building.x, building.y, 40, 10); // 道路は細長い
         }
+      });
+    }
+
+    function drawSawmills() {
+      sawmills.forEach(sawmill => {
+        ctx.fillStyle = 'saddlebrown';
+        ctx.fillRect(sawmill.x, sawmill.y, 40, 40);
       });
     }
 
@@ -128,14 +153,34 @@
           population += 0.01;
         }
         if (building.type === 'school') {
+          if (population >= 5) {
+            education += 0.1;
+          }
           taxRevenue += 0.1;
         }
       });
+
+      sawmills.forEach(sawmill => {
+        if (woodArea) {
+          if (education >= 1) {
+            if (wood > 0) {
+              wood -= 0.1; // 伐採
+              // 伐採後に植樹
+              if (Math.random() < 0.05) {
+                wood += 0.1; // 植樹
+              }
+            }
+          }
+        }
+      });
+
       money += taxRevenue;
       document.getElementById('money').innerText = Math.floor(money);
       document.getElementById('wood').innerText = Math.floor(wood);
+      document.getElementById('iron').innerText = Math.floor(iron);
       document.getElementById('food').innerText = Math.floor(food);
       document.getElementById('population').innerText = Math.floor(population);
+      document.getElementById('education').innerText = Math.floor(education);
       document.getElementById('taxRevenue').innerText = Math.floor(taxRevenue);
     }
 
@@ -170,9 +215,14 @@
           buildings.push({x, y, color: 'gray', type: 'road'});
           money -= 20;
           // 道路上に車を追加
-          cars.push({x: x, y: y + 5});
+          cars.push({x: x, y: y});
+        } else if (buildingType === 'sawmill' && money >= 50 && wood >= 30) {
+          sawmills.push({x, y});
+          money -= 50;
+          wood -= 30;
         }
-        saveGame();
+        buildingType = null;
+        document.getElementById('selectedBuilding').innerText = 'なし';
       }
     }
 
@@ -182,19 +232,17 @@
     }
 
     function resetGame() {
-      if (confirm('ゲームをリセットしますか？')) {
-        localStorage.removeItem('townGameData');
-        money = 192;
-        wood = 70;
-        food = 40;
-        population = 0;
-        taxRevenue = 0;
-        buildings = [];
-        cars = [];
-        buildingType = null;
-        document.getElementById('selectedBuilding').innerText = 'なし';
-        saveGame();
-      }
+      money = 200;
+      wood = 100;
+      iron = 25;
+      food = 45;
+      population = 0;
+      education = 0;
+      taxRevenue = 0;
+      buildings = [];
+      cars = [];
+      sawmills = [];
+      loadGame();
     }
 
     canvas.addEventListener('click', (event) => {
