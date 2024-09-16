@@ -150,7 +150,7 @@
       // 伐採場の更新
       sawmills.forEach(sawmill => {
         if (wood > 0) {
-          wood -= 0.1; // 伐採する速度
+          wood += 0.8; // 伐採する速度
           if (wood < 0) wood = 0;
         }
       });
