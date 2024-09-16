@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>町開発ゲーム</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+    #resources {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>町開発ゲーム</h1>
+  <canvas id="gameCanvas" width="800" height="800"></canvas>
+  <div id="controls">
+    <button onclick="setBuildingType('house')">家を建てる</button>
+    <button onclick="setBuildingType('farm')">農場を建てる</button>
+    <button onclick="setBuildingType('factory')">工場を建てる</button>
+    <button onclick="setBuildingType('hospital')">医療施設を建てる</button>
+    <button onclick="setBuildingType('school')">学校を建てる</button>
+    <button onclick="setBuildingType('office')">オフィスを建てる</button>
+    <button onclick="setBuildingType('road')">道路を建てる</button>
+    <button onclick="resetGame()">ゲームをリセット</button>
+  </div>
+  <div id="resources">
+    <p>資源: お金: <span id="money">100</span> 木材: <span id="wood">50</span> 食料: <span id="food">30</span></p>
+    <p>人口: <span id="population">0</span></p>
+    <p>税収: <span id="taxRevenue">0</span></p>
+    <p>選択中の建物: <span id="selectedBuilding">なし</span></p>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const carSpeed = 2;
+    let money = 100;
+    let wood = 50;
+    let food = 30;
+    let population = 0;
+    let taxRevenue = 0;
+
+    let buildings = [];
+    let cars = [];
+    let buildingType = null;
+
+    function loadGame() {
+      const savedData = JSON.parse(localStorage.getItem('townGameData'));
+      if (savedData) {
+        money = savedData.money;
+        wood = savedData.wood;
+        food = savedData.food;
+        population = savedData.population;
+        taxRevenue = savedData.taxRevenue;
+        buildings = savedData.buildings;
+        cars = savedData.cars;
+      }
+    }
+
+    function saveGame() {
+      const gameData = {
+        money,
+        wood,
+        food,
+        population,
+        taxRevenue,
+        buildings,
+        cars
+      };
+      localStorage.setItem('townGameData', JSON.stringify(gameData));
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updateTimeOfDay();
+      drawBuildings();
+      drawCars();
+      updateResources();
+      saveGame();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function updateTimeOfDay() {
+      const time = (Date.now() % 24000) / 24000; // 24秒で1日のサイクル
+      const color = `rgba(${Math.floor(255 * time)}, ${Math.floor(255 * (1 - time))}, 255, 1)`;
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawBuildings() {
+      buildings.forEach(building => {
+        ctx.fillStyle = building.color;
+        ctx.fillRect(building.x, building.y, 40, 40);
+        if (building.type === 'road') {
+          ctx.fillStyle = 'gray';
+          ctx.fillRect(building.x, building.y, 40, 10); // 道路は細長い
+        }
+      });
+    }
+
+    function drawCars() {
+      cars.forEach(car => {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(car.x, car.y, 20, 10);
+        car.x += carSpeed;
+        if (car.x > canvas.width) car.x = 0; // 車を画面の端でリセット
+      });
+    }
+
+    function updateResources() {
+      buildings.forEach(building => {
+        if (building.type === 'farm') {
+          food += 0.1;
+        }
+        if (building.type === 'factory') {
+          money += 0.1;
+        }
+        if (building.type === 'office') {
+          money += 0.2;
+        }
+        if (building.type === 'hospital') {
+          population += 0.01;
+        }
+        if (building.type === 'school') {
+          taxRevenue += 0.1;
+        }
+      });
+      money += taxRevenue;
+      document.getElementById('money').innerText = Math.floor(money);
+      document.getElementById('wood').innerText = Math.floor(wood);
+      document.getElementById('food').innerText = Math.floor(food);
+      document.getElementById('population').innerText = Math.floor(population);
+      document.getElementById('taxRevenue').innerText = Math.floor(taxRevenue);
+    }
+
+    function buildBuilding(x, y) {
+      if (buildingType) {
+        if (buildingType === 'house' && money >= 50 && wood >= 30) {
+          buildings.push({x, y, color: 'blue', type: 'house'});
+          money -= 50;
+          wood -= 30;
+          population += 5;
+        } else if (buildingType === 'farm' && money >= 30 && wood >= 20) {
+          buildings.push({x, y, color: 'green', type: 'farm'});
+          money -= 30;
+          wood -= 20;
+        } else if (buildingType === 'factory' && money >= 100 && wood >= 50) {
+          buildings.push({x, y, color: 'gray', type: 'factory'});
+          money -= 100;
+          wood -= 50;
+        } else if (buildingType === 'hospital' && money >= 60 && wood >= 40) {
+          buildings.push({x, y, color: 'red', type: 'hospital'});
+          money -= 60;
+          wood -= 40;
+        } else if (buildingType === 'school' && money >= 70 && wood >= 50) {
+          buildings.push({x, y, color: 'yellow', type: 'school'});
+          money -= 70;
+          wood -= 50;
+        } else if (buildingType === 'office' && money >= 80 && wood >= 60) {
+          buildings.push({x, y, color: 'purple', type: 'office'});
+          money -= 80;
+          wood -= 60;
+        } else if (buildingType === 'road' && money >= 20) {
+          buildings.push({x, y, color: 'gray', type: 'road'});
+          money -= 20;
+          // 道路上に車を追加
+          cars.push({x: x, y: y + 5});
+        }
+        saveGame();
+      }
+    }
+
+    function setBuildingType(type) {
+      buildingType = type;
+      document.getElementById('selectedBuilding').innerText = type;
+    }
+
+    function resetGame() {
+      if (confirm('ゲームをリセットしますか？')) {
+        localStorage.removeItem('townGameData');
+        money = 100;
+        wood = 50;
+        food = 30;
+        population = 0;
+        taxRevenue = 0;
+        buildings = [];
+        cars = [];
+        buildingType = null;
+        document.getElementById('selectedBuilding').innerText = 'なし';
+        saveGame();
+      }
+    }
+
+    canvas.addEventListener('click', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      buildBuilding(x, y);
+    });
+
+    loadGame();
+    gameLoop();
+  </script>
+</body>
+</html>
