@@ -31,9 +31,8 @@
     <button onclick="resetGame()">ゲームをリセット</button>
   </div>
   <div id="resources">
-    <p>資源: 金: <span id="money">200</span> 木材: <span id="wood">100</span> 鉄: <span id="iron">25</span> 食料: <span id="food">45</span></p>
+    <p>資源: お金: <span id="money">200</span> 木材: <span id="wood">100</span> 鉄: <span id="iron">25</span> 食料: <span id="food">45</span></p>
     <p>人口: <span id="population">0</span></p>
-    <p>学: <span id="education">0</span></p>
     <p>税収: <span id="taxRevenue">0</span></p>
     <p>選択中の建物: <span id="selectedBuilding">なし</span></p>
   </div>
@@ -47,14 +46,13 @@
     let iron = 25;
     let food = 45;
     let population = 0;
-    let education = 0;
     let taxRevenue = 0;
-    let woodArea = {x: 100, y: 100, width: 200, height: 200};
+
     let buildings = [];
     let cars = [];
-    let buildingType = null;
     let sawmills = [];
-    
+    let buildingType = null;
+
     function loadGame() {
       const savedData = JSON.parse(localStorage.getItem('townGameData'));
       if (savedData) {
@@ -63,7 +61,6 @@
         iron = savedData.iron;
         food = savedData.food;
         population = savedData.population;
-        education = savedData.education;
         taxRevenue = savedData.taxRevenue;
         buildings = savedData.buildings;
         cars = savedData.cars;
@@ -78,7 +75,6 @@
         iron,
         food,
         population,
-        education,
         taxRevenue,
         buildings,
         cars,
@@ -90,10 +86,9 @@
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       updateTimeOfDay();
-      drawWoodArea();
       drawBuildings();
-      drawSawmills();
       drawCars();
+      drawSawmills();
       updateResources();
       saveGame();
       requestAnimationFrame(gameLoop);
@@ -104,11 +99,6 @@
       const color = `rgba(${Math.floor(255 * time)}, ${Math.floor(255 * (1 - time))}, 255, 1)`;
       ctx.fillStyle = color;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    function drawWoodArea() {
-      ctx.fillStyle = 'darkgreen';
-      ctx.fillRect(woodArea.x, woodArea.y, woodArea.width, woodArea.height);
     }
 
     function drawBuildings() {
@@ -122,19 +112,19 @@
       });
     }
 
-    function drawSawmills() {
-      sawmills.forEach(sawmill => {
-        ctx.fillStyle = 'saddlebrown';
-        ctx.fillRect(sawmill.x, sawmill.y, 40, 40);
-      });
-    }
-
     function drawCars() {
       cars.forEach(car => {
         ctx.fillStyle = 'red';
         ctx.fillRect(car.x, car.y, 20, 10);
         car.x += carSpeed;
         if (car.x > canvas.width) car.x = 0; // 車を画面の端でリセット
+      });
+    }
+
+    function drawSawmills() {
+      sawmills.forEach(sawmill => {
+        ctx.fillStyle = 'brown';
+        ctx.fillRect(sawmill.x, sawmill.y, 40, 40);
       });
     }
 
@@ -153,24 +143,15 @@
           population += 0.01;
         }
         if (building.type === 'school') {
-          if (population >= 5) {
-            education += 0.1;
-          }
           taxRevenue += 0.1;
         }
       });
 
+      // 伐採場の更新
       sawmills.forEach(sawmill => {
-        if (woodArea) {
-          if (education >= 1) {
-            if (wood > 0) {
-              wood -= 0.1; // 伐採
-              // 伐採後に植樹
-              if (Math.random() < 0.05) {
-                wood += 0.1; // 植樹
-              }
-            }
-          }
+        if (wood > 0) {
+          wood -= 0.1; // 伐採する速度
+          if (wood < 0) wood = 0;
         }
       });
 
@@ -180,7 +161,6 @@
       document.getElementById('iron').innerText = Math.floor(iron);
       document.getElementById('food').innerText = Math.floor(food);
       document.getElementById('population').innerText = Math.floor(population);
-      document.getElementById('education').innerText = Math.floor(education);
       document.getElementById('taxRevenue').innerText = Math.floor(taxRevenue);
     }
 
@@ -204,9 +184,13 @@
           money -= 60;
           wood -= 40;
         } else if (buildingType === 'school' && money >= 70 && wood >= 50) {
-          buildings.push({x, y, color: 'yellow', type: 'school'});
-          money -= 70;
-          wood -= 50;
+          if (population >= 5) { // 人口が5人以上であれば
+            buildings.push({x, y, color: 'yellow', type: 'school'});
+            money -= 70;
+            wood -= 50;
+          } else {
+            alert('人口が5人以上でなければ学校は建てられません。');
+          }
         } else if (buildingType === 'office' && money >= 80 && wood >= 60) {
           buildings.push({x, y, color: 'purple', type: 'office'});
           money -= 80;
@@ -214,15 +198,17 @@
         } else if (buildingType === 'road' && money >= 20) {
           buildings.push({x, y, color: 'gray', type: 'road'});
           money -= 20;
-          // 道路上に車を追加
-          cars.push({x: x, y: y});
+          cars.push({x: x, y: y + 5}); // 道路上に車を追加
         } else if (buildingType === 'sawmill' && money >= 50 && wood >= 30) {
-          sawmills.push({x, y});
-          money -= 50;
-          wood -= 30;
+          if (population >= 5) { // 人口が5人以上であれば
+            sawmills.push({x, y});
+            money -= 50;
+            wood -= 30;
+          } else {
+            alert('人口が5人以上でなければ伐採場は建てられません。');
+          }
         }
-        buildingType = null;
-        document.getElementById('selectedBuilding').innerText = 'なし';
+        saveGame();
       }
     }
 
@@ -232,17 +218,21 @@
     }
 
     function resetGame() {
-      money = 200;
-      wood = 100;
-      iron = 25;
-      food = 45;
-      population = 0;
-      education = 0;
-      taxRevenue = 0;
-      buildings = [];
-      cars = [];
-      sawmills = [];
-      loadGame();
+      if (confirm('ゲームをリセットしますか？')) {
+        localStorage.removeItem('townGameData');
+        money = 200;
+        wood = 100;
+        iron = 25;
+        food = 45;
+        population = 0;
+        taxRevenue = 0;
+        buildings = [];
+        cars = [];
+        sawmills = [];
+        buildingType = null;
+        document.getElementById('selectedBuilding').innerText = 'なし';
+        saveGame();
+      }
     }
 
     canvas.addEventListener('click', (event) => {
