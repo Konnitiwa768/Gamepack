@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋ライク拡張ゲーム</title>
+    <title>将棋拡張ゲーム</title>
     <style>
         table { border-collapse: collapse; }
         td { width: 50px; height: 50px; text-align: center; border: 1px solid black; cursor: pointer; }
@@ -11,10 +11,12 @@
     </style>
 </head>
 <body>
-    <h1>Web 将棋ライク拡張ゲーム</h1>
+    <h1>Web 将棋拡張ゲーム</h1>
     <table id="gameBoard"></table>
-    <button onclick="reinforcePiece(1)">プレイヤー1の錬成</button>
-    <button onclick="reinforcePiece(2)">プレイヤー2の錬成</button>
+    <button onclick="reinforcePiece(1, '銀城')">プレイヤー1の銀城錬成</button>
+    <button onclick="reinforcePiece(1, '一撃')">プレイヤー1の一撃錬成</button>
+    <button onclick="reinforcePiece(2, '銀城')">プレイヤー2の銀城錬成</button>
+    <button onclick="reinforcePiece(2, '一撃')">プレイヤー2の一撃錬成</button>
     <script>
         const boardSize = 9;
         const pieces = {
@@ -23,7 +25,8 @@
             '王将': { hp: 10, attack: 5, moves: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]] },
             '雛': { hp: 2, attack: 1, moves: [[-1, 0]] },
             '飛車': { hp: 5, attack: 4, moves: [[-1, 0], [1, 0], [0, -1], [0, 1]] },
-            '銀城': { hp: 5, attack: 3, moves: [[-2, -2], [-2, 0], [-2, 2], [2, -2], [2, 0], [2, 2]] }
+            '銀城': { hp: 5, attack: 3, moves: [[-2, -2], [-2, 0], [-2, 2], [2, -2], [2, 0], [2, 2]] },
+            '一撃': { hp: 1, attack: 99, moves: [[-1, -1], [-1, 0], [-1, 1], [1, -1], [1, 0], [1, 1]] }
         };
 
         let board = [];
@@ -75,9 +78,6 @@
                     if (board[i][j]) {
                         cell.textContent = board[i][j].type + ' (' + board[i][j].hp + ')';
                         cell.style.backgroundColor = board[i][j].player === 1 ? 'lightblue' : 'lightcoral';
-                        if (board[i][j].barrier) {
-                            cell.classList.add('barrier');
-                        }
                     }
                     cell.addEventListener('click', () => handleCellClick(i, j));
                     row.appendChild(cell);
@@ -119,65 +119,71 @@
         }
 
         function isMoveValid(startRow, startCol, endRow, endCol) {
+            if (!isWithinBounds(endRow, endCol)) return false;
             const piece = board[startRow][startCol];
+            const targetPiece = board[endRow][endCol];
+
+            if (targetPiece && targetPiece.player === currentPlayer) return false; // 自分の駒に移動できない
+
             const possibleMoves = pieces[piece.type].moves;
-            for (let move of possibleMoves) {
-                if (startRow + move[0] === endRow && startCol + move[1] === endCol) {
-                    return true;
-                }
-            }
-            return false;
+            return possibleMoves.some(move => startRow + move[0] === endRow && startCol + move[1] === endCol);
         }
 
         function movePiece(startRow, startCol, endRow, endCol) {
-            if (board[endRow][endCol] && board[endRow][endCol].player !== currentPlayer) {
-                // 攻撃して敵駒を奪い、バリアをつける
-                board[endRow][endCol].player = currentPlayer;
-                board[endRow][endCol].barrier = true;
-            } else {
-                board[endRow][endCol] = board[startRow][startCol];
+            const piece = board[startRow][startCol];
+            if (board[endRow][endCol]) {
+                // 攻撃処理
+                if (board[endRow][endCol].type === '一撃') {
+                    board[endRow][endCol] = { player: piece.player, type: '一撃', hp: 1, attack: 99 };
+                    alert(`${piece.type}が一撃をワープしました！`);
+                } else {
+                    board[endRow][endCol].hp -= piece.attack;
+                    alert(`${piece.type}が${board[endRow][endCol].type}を攻撃！残りHP: ${board[endRow][endCol].hp}`);
+                    if (board[endRow][endCol].hp <= 0) {
+                        board[endRow][endCol] = null; // 駒が破壊された
+                    }
+                }
             }
+            board[endRow][endCol] = piece;
             board[startRow][startCol] = null;
-            drawBoard();
-        }
-
-        function clearHighlights() {
-            document.querySelectorAll('.highlight').forEach(cell => cell.classList.remove('highlight'));
-        }
-
-        function reinforcePiece(player) {
-            let pieceFound = false;
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
-                    if (board[i][j] && board[i][j].player === player) {
-                        board[i][j].hp--;
-                        if (board[i][j].hp <= 0) {
-                            board[i][j] = { player, type: '銀城', hp: pieces['銀城'].hp, attack: pieces['銀城'].attack };
-                            pieceFound = true;
-                            break;
-                        }
-                    }
-                }
-                if (pieceFound) break;
-            }
-            drawBoard();
-        }
-
-        function switchTurn() {
-            currentPlayer = currentPlayer === 1 ? 2 : 1;
-            // バリアを1ターン後に解除
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
-                    if (board[i][j] && board[i][j].barrier) {
-                        board[i][j].barrier = false;
-                    }
-                }
-            }
             drawBoard();
         }
 
         function isWithinBounds(row, col) {
             return row >= 0 && row < boardSize && col >= 0 && col < boardSize;
+        }
+
+        function clearHighlights() {
+            const highlightedCells = document.querySelectorAll('.highlight');
+            highlightedCells.forEach(cell => cell.classList.remove('highlight'));
+        }
+
+        function switchTurn() {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+        }
+
+        function reinforcePiece(player, type) {
+            const message = player === 1 ? 'プレイヤー1' : 'プレイヤー2';
+            let newPiece;
+
+            if (type === '銀城') {
+                newPiece = { player: player, type: '銀城', hp: pieces['銀城'].hp, attack: pieces['銀城'].attack };
+            } else if (type === '一撃') {
+                newPiece = { player: player, type: '一撃', hp: pieces['一撃'].hp, attack: pieces['一撃'].attack };
+            }
+
+            // 錬成先を探す
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (!board[i][j]) {
+                        board[i][j] = newPiece;
+                        alert(`${message}の${type}が錬成されました！`);
+                        drawBoard();
+                        return;
+                    }
+                }
+            }
+            alert('空いているマスがありません！');
         }
 
         initializeBoard();
