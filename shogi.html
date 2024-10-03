@@ -42,9 +42,25 @@
         }
 
         function placeInitialPieces() {
+            // プレイヤー1の駒の配置
             board[0][4] = { player: 1, type: '王将', hp: pieces['王将'].hp, attack: pieces['王将'].attack };
+            board[0][3] = { player: 1, type: '金将', hp: pieces['金将'].hp, attack: pieces['金将'].attack };
+            board[0][5] = { player: 1, type: '金将', hp: pieces['金将'].hp, attack: pieces['金将'].attack };
+            board[0][2] = { player: 1, type: '銀将', hp: pieces['銀将'].hp, attack: pieces['銀将'].attack };
+            board[0][6] = { player: 1, type: '銀将', hp: pieces['銀将'].hp, attack: pieces['銀将'].attack };
+            board[1][4] = { player: 1, type: '飛車', hp: pieces['飛車'].hp, attack: pieces['飛車'].attack };
+            board[2][0] = { player: 1, type: '雛', hp: pieces['雛'].hp, attack: pieces['雛'].attack };
+            board[2][8] = { player: 1, type: '雛', hp: pieces['雛'].hp, attack: pieces['雛'].attack };
+
+            // プレイヤー2の駒の配置
             board[8][4] = { player: 2, type: '王将', hp: pieces['王将'].hp, attack: pieces['王将'].attack };
-            // その他の駒を配置
+            board[8][3] = { player: 2, type: '金将', hp: pieces['金将'].hp, attack: pieces['金将'].attack };
+            board[8][5] = { player: 2, type: '金将', hp: pieces['金将'].hp, attack: pieces['金将'].attack };
+            board[8][2] = { player: 2, type: '銀将', hp: pieces['銀将'].hp, attack: pieces['銀将'].attack };
+            board[8][6] = { player: 2, type: '銀将', hp: pieces['銀将'].hp, attack: pieces['銀将'].attack };
+            board[7][4] = { player: 2, type: '飛車', hp: pieces['飛車'].hp, attack: pieces['飛車'].attack };
+            board[6][0] = { player: 2, type: '雛', hp: pieces['雛'].hp, attack: pieces['雛'].attack };
+            board[6][8] = { player: 2, type: '雛', hp: pieces['雛'].hp, attack: pieces['雛'].attack };
         }
 
         function drawBoard() {
@@ -133,33 +149,23 @@
             let pieceFound = false;
             for (let i = 0; i < boardSize; i++) {
                 for (let j = 0; j < boardSize; j++) {
-                    const piece = board[i][j];
-                    if (piece && piece.player === player && piece.hp > 1) {
-                        piece.hp--;
-                        placeNewPiece('銀城', player);
-                        pieceFound = true;
-                        break;
+                    if (board[i][j] && board[i][j].player === player) {
+                        board[i][j].hp--;
+                        if (board[i][j].hp <= 0) {
+                            board[i][j] = { player, type: '銀城', hp: pieces['銀城'].hp, attack: pieces['銀城'].attack };
+                            pieceFound = true;
+                            break;
+                        }
                     }
                 }
                 if (pieceFound) break;
             }
             drawBoard();
-            switchTurn();
-        }
-
-        function placeNewPiece(type, player) {
-            for (let i = 0; i < boardSize; i++) {
-                for (let j = 0; j < boardSize; j++) {
-                    if (!board[i][j]) {
-                        board[i][j] = { player, type, hp: pieces[type].hp, attack: pieces[type].attack };
-                        return;
-                    }
-                }
-            }
         }
 
         function switchTurn() {
-            // バリアを解除
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            // バリアを1ターン後に解除
             for (let i = 0; i < boardSize; i++) {
                 for (let j = 0; j < boardSize; j++) {
                     if (board[i][j] && board[i][j].barrier) {
@@ -167,8 +173,7 @@
                     }
                 }
             }
-            currentPlayer = currentPlayer === 1 ? 2 : 1;
-            alert(`プレイヤー${currentPlayer}のターンです`);
+            drawBoard();
         }
 
         function isWithinBounds(row, col) {
