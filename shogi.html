@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>将棋ライク拡張ゲーム</title>
+    <style>
+        table { border-collapse: collapse; }
+        td { width: 50px; height: 50px; text-align: center; border: 1px solid black; cursor: pointer; }
+        .highlight { background-color: yellow; }
+        .barrier { background-color: lightgreen; }
+    </style>
+</head>
+<body>
+    <h1>Web 将棋ライク拡張ゲーム</h1>
+    <table id="gameBoard"></table>
+    <button onclick="reinforcePiece(1)">プレイヤー1の錬成</button>
+    <button onclick="reinforcePiece(2)">プレイヤー2の錬成</button>
+    <script>
+        const boardSize = 9;
+        const pieces = {
+            '銀将': { hp: 3, attack: 2, moves: [[-1, -1], [-1, 0], [-1, 1], [1, -1], [1, 0], [1, 1]] },
+            '金将': { hp: 4, attack: 3, moves: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0]] },
+            '王将': { hp: 10, attack: 5, moves: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]] },
+            '雛': { hp: 2, attack: 1, moves: [[-1, 0]] },
+            '飛車': { hp: 5, attack: 4, moves: [[-1, 0], [1, 0], [0, -1], [0, 1]] },
+            '銀城': { hp: 5, attack: 3, moves: [[-2, -2], [-2, 0], [-2, 2], [2, -2], [2, 0], [2, 2]] }
+        };
+
+        let board = [];
+        let currentPlayer = 1;
+        let selectedPiece = null;
+
+        function initializeBoard() {
+            for (let i = 0; i < boardSize; i++) {
+                board[i] = [];
+                for (let j = 0; j < boardSize; j++) {
+                    board[i][j] = null;
+                }
+            }
+            placeInitialPieces();
+            drawBoard();
+        }
+
+        function placeInitialPieces() {
+            board[0][4] = { player: 1, type: '王将', hp: pieces['王将'].hp, attack: pieces['王将'].attack };
+            board[8][4] = { player: 2, type: '王将', hp: pieces['王将'].hp, attack: pieces['王将'].attack };
+            // その他の駒を配置
+        }
+
+        function drawBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < boardSize; i++) {
+                const row = document.createElement('tr');
+                for (let j = 0; j < boardSize; j++) {
+                    const cell = document.createElement('td');
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    if (board[i][j]) {
+                        cell.textContent = board[i][j].type + ' (' + board[i][j].hp + ')';
+                        cell.style.backgroundColor = board[i][j].player === 1 ? 'lightblue' : 'lightcoral';
+                        if (board[i][j].barrier) {
+                            cell.classList.add('barrier');
+                        }
+                    }
+                    cell.addEventListener('click', () => handleCellClick(i, j));
+                    row.appendChild(cell);
+                }
+                gameBoard.appendChild(row);
+            }
+        }
+
+        function handleCellClick(row, col) {
+            if (selectedPiece) {
+                if (isMoveValid(selectedPiece.row, selectedPiece.col, row, col)) {
+                    movePiece(selectedPiece.row, selectedPiece.col, row, col);
+                    clearHighlights();
+                    selectedPiece = null;
+                    switchTurn();
+                } else {
+                    clearHighlights();
+                    selectedPiece = null;
+                }
+            } else {
+                if (board[row][col] && board[row][col].player === currentPlayer) {
+                    selectedPiece = { row, col };
+                    highlightMoves(row, col);
+                }
+            }
+        }
+
+        function highlightMoves(row, col) {
+            const piece = board[row][col];
+            const possibleMoves = pieces[piece.type].moves;
+            possibleMoves.forEach(move => {
+                const newRow = row + move[0];
+                const newCol = col + move[1];
+                if (isWithinBounds(newRow, newCol) && (!board[newRow][newCol] || board[newRow][newCol].player !== currentPlayer)) {
+                    const cell = document.querySelector(`[data-row='${newRow}'][data-col='${newCol}']`);
+                    if (cell) cell.classList.add('highlight');
+                }
+            });
+        }
+
+        function isMoveValid(startRow, startCol, endRow, endCol) {
+            const piece = board[startRow][startCol];
+            const possibleMoves = pieces[piece.type].moves;
+            for (let move of possibleMoves) {
+                if (startRow + move[0] === endRow && startCol + move[1] === endCol) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function movePiece(startRow, startCol, endRow, endCol) {
+            if (board[endRow][endCol] && board[endRow][endCol].player !== currentPlayer) {
+                // 攻撃して敵駒を奪い、バリアをつける
+                board[endRow][endCol].player = currentPlayer;
+                board[endRow][endCol].barrier = true;
+            } else {
+                board[endRow][endCol] = board[startRow][startCol];
+            }
+            board[startRow][startCol] = null;
+            drawBoard();
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.highlight').forEach(cell => cell.classList.remove('highlight'));
+        }
+
+        function reinforcePiece(player) {
+            let pieceFound = false;
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    const piece = board[i][j];
+                    if (piece && piece.player === player && piece.hp > 1) {
+                        piece.hp--;
+                        placeNewPiece('銀城', player);
+                        pieceFound = true;
+                        break;
+                    }
+                }
+                if (pieceFound) break;
+            }
+            drawBoard();
+            switchTurn();
+        }
+
+        function placeNewPiece(type, player) {
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (!board[i][j]) {
+                        board[i][j] = { player, type, hp: pieces[type].hp, attack: pieces[type].attack };
+                        return;
+                    }
+                }
+            }
+        }
+
+        function switchTurn() {
+            // バリアを解除
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (board[i][j] && board[i][j].barrier) {
+                        board[i][j].barrier = false;
+                    }
+                }
+            }
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            alert(`プレイヤー${currentPlayer}のターンです`);
+        }
+
+        function isWithinBounds(row, col) {
+            return row >= 0 && row < boardSize && col >= 0 && col < boardSize;
+        }
+
+        initializeBoard();
+    </script>
+</body>
+</html>
