@@ -5,6 +5,7 @@ https://sakalt.github.io/Gamepack/4.html
 https://sakalt.github.io/Gamepack/Univ.html
 https://sakalt.github.io/Gamepack/machi.html
 https://sakalt.github.io/Gamepack/shogi.html
+https://sakalt.github.io/Gamepack/shogi2.html
 .btn-text-3d {
   text-decoration: none;
   font-weight: bold;
