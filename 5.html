@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Phaser.js Web Game Sample</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #healthDisplay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .healthSegment {
+            width: 100px;
+            height: 20px;
+            background-color: green;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .button {
+            width: 80px;
+            height: 40px;
+            margin: 5px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div id="healthDisplay">
+    <div class="healthSegment" id="headHealth"></div>
+    <div class="healthSegment" id="leftArmHealth"></div>
+    <div class="healthSegment" id="rightArmHealth"></div>
+    <div class="healthSegment" id="bodyHealth"></div>
+    <div class="healthSegment" id="leftLegHealth"></div>
+    <div class="healthSegment" id="rightLegHealth"></div>
+</div>
+<div id="controls">
+    <button class="button" id="upBtn">上</button>
+    <button class="button" id="downBtn">下</button>
+    <button class="button" id="leftBtn">左</button>
+    <button class="button" id="rightBtn">右</button>
+    <button class="button" id="attackBtn">攻撃</button>
+</div>
+
+<script>
+    // Phaserのゲーム設定
+    const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        }
+    };
+
+    const game = new Phaser.Game(config);
+    let player;
+    let woodCount = 0;
+    let spider;
+    let lizard;
+    let playerHealth = {
+        head: 20,
+        leftArm: 20,
+        rightArm: 20,
+        body: 40,
+        leftLeg: 10,
+        rightLeg: 10
+    };
+
+    function preload() {
+        this.load.image('player', 'https://phaser.io/images/img.png');  // プレイヤーの画像
+        this.load.image('tree', 'https://phaser.io/images/examples/sprites/tree.png');  // 木の画像
+        this.load.image('spider', 'https://phaser.io/images/examples/sprites/spider.png');  // タランチュラの画像
+        this.load.image('lizard', 'https://example.com/lizard.png');  // スパイダーリザードの画像（実際のURLに置き換えてください）
+    }
+
+    function create() {
+        // プレイヤーの作成
+        player = this.add.sprite(400, 300, 'player');
+
+        // 木の作成
+        const tree = this.add.sprite(200, 300, 'tree').setInteractive();
+        tree.on('pointerdown', () => {
+            tree.destroy();
+            woodCount += 20;
+            console.log('木材を取得しました: ' + woodCount);
+        });
+
+        // タランチュラの作成
+        spider = this.add.sprite(600, 300, 'spider').setInteractive();
+        spider.health = 20;
+
+        spider.on('pointerdown', () => {
+            spider.health -= 10;  // クリックでHPを減少
+            if (spider.health <= 0) {
+                spider.destroy();
+                const silkDrop = Phaser.Math.Between(1, 2);
+                console.log('タランチュラを倒しました、糸を取得: ' + silkDrop);
+                woodCount += silkDrop;
+            } else {
+                let damage = 3;
+                playerHealth.body -= damage; // 体にダメージ
+                console.log('プレイヤーの体力: ', playerHealth);
+                updateHealthDisplay();
+            }
+        });
+
+        // スパイダーリザードの作成
+        lizard = this.add.sprite(300, 300, 'lizard').setInteractive();
+        lizard.health = 30;
+
+        this.physics.add.overlap(player, lizard, () => {
+            if (lizard.health > 0) {
+                let damage = 4; // スパイダーリザードの攻撃力
+                playerHealth.body -= damage; // 体にダメージ
+                console.log('スパイダーリザードの攻撃！プレイヤーの体力: ', playerHealth);
+                updateHealthDisplay();
+            }
+        });
+
+        // ボタンのイベントリスナー
+        document.getElementById('upBtn').addEventListener('click', () => movePlayer(0, -10));
+        document.getElementById('downBtn').addEventListener('click', () => movePlayer(0, 10));
+        document.getElementById('leftBtn').addEventListener('click', () => movePlayer(-10, 0));
+        document.getElementById('rightBtn').addEventListener('click', () => movePlayer(10, 0));
+        document.getElementById('attackBtn').addEventListener('click', attackSpider);
+
+        updateHealthDisplay();  // 初期体力表示
+    }
+
+    function update() {
+        // 各部位の体力に応じて色を変化させる
+        updateHealthDisplay();
+    }
+
+    function movePlayer(x, y) {
+        player.x += x;
+        player.y += y;
+
+        // 範囲制限
+        player.x = Phaser.Math.Clamp(player.x, 0, config.width);
+        player.y = Phaser.Math.Clamp(player.y, 0, config.height);
+    }
+
+    function attackSpider() {
+        if (spider) {
+            spider.health -= 10; // 攻撃でHPを減少
+            console.log('タランチュラに攻撃しました！');
+
+            if (spider.health <= 0) {
+                spider.destroy();
+                const silkDrop = Phaser.Math.Between(1, 2);
+                console.log('タランチュラを倒しました、糸を取得: ' + silkDrop);
+            }
+        }
+    }
+
+    function updateHealthDisplay() {
+        document.getElementById('headHealth').style.width = (playerHealth.head / 20 * 100) + 'px';
+        document.getElementById('leftArmHealth').style.width = (playerHealth.leftArm / 20 * 100) + 'px';
+        document.getElementById('rightArmHealth').style.width = (playerHealth.rightArm / 20 * 100) + 'px';
+        document.getElementById('bodyHealth').style.width = (playerHealth.body / 40 * 100) + 'px';
+        document.getElementById('leftLegHealth').style.width = (playerHealth.leftLeg / 10 * 100) + 'px';
+        document.getElementById('rightLegHealth').style.width = (playerHealth.rightLeg / 10 * 100) + 'px';
+
+        // 色の変更
+        updateHealthColor('headHealth', playerHealth.head);
+        updateHealthColor('leftArmHealth', playerHealth.leftArm);
+        updateHealthColor('rightArmHealth', playerHealth.rightArm);
+        updateHealthColor('bodyHealth', playerHealth.body);
+        updateHealthColor('leftLegHealth', playerHealth.leftLeg);
+        updateHealthColor('rightLegHealth', playerHealth.rightLeg);
+    }
+
+    function updateHealthColor(segmentId, health) {
+        const segment = document.getElementById(segmentId);
+        if (health > 0) {
+            if (health > 10) {
+                segment.style.backgroundColor = 'green'; // 緑
+            } else if (health > 5) {
+                segment.style.backgroundColor = 'yellow'; // 黄色
+            } else {
+                segment.style.backgroundColor = 'red'; // 赤
+            }
+        } else {
+            segment.style.width = '0px'; // HPが0のときは幅を0に
+        }
+    }
+</script>
+</body>
+</html>
