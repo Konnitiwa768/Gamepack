@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AoA防御計算機</title>
+</head>
+<body>
+    <h1>AoA防御計算機</h1>
+    
+    <label for="defense">防御値 (0以上):</label>
+    <input type="number" id="defense" min="0" value="0"><br><br>
+
+    <label for="toughness">タフネス:</label>
+    <input type="number" id="toughness" min="0" value="0"><br><br>
+
+    <label for="damage">攻撃ダメージ:</label>
+    <input type="number" id="damage" value="10"><br><br>
+
+    <button onclick="calculate()">計算する</button>
+
+    <h2 id="result">結果: </h2>
+
+    <script>
+        function calculate() {
+            const defense = parseFloat(document.getElementById("defense").value);
+            const toughness = parseFloat(document.getElementById("toughness").value);
+            const damage = parseFloat(document.getElementById("damage").value);
+
+            // 防御値に基づくダメージ軽減率計算 (防御値20を超える場合も対応)
+            let reductionFactor = defense * 0.04;
+            if (reductionFactor > 1) reductionFactor = 1;  // 100%軽減を超えないようにする
+
+            const toughnessFactor = toughness / 100;
+            const totalReduction = reductionFactor + toughnessFactor;
+
+            // 実際の受けるダメージ計算
+            const reducedDamage = damage * (1 - totalReduction);
+
+            // 結果を表示
+            document.getElementById("result").innerText = `結果: 実際のダメージは ${reducedDamage.toFixed(2)} です。`;
+        }
+    </script>
+</body>
+</html>
