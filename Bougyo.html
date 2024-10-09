@@ -27,13 +27,11 @@
             const toughness = parseFloat(document.getElementById("toughness").value);
             const damage = parseFloat(document.getElementById("damage").value);
 
-            // 提案された数式に基づくダメージ軽減計算
-            const part1 = defense / 5 + defense;
-            const part2 = (4 * damage / toughness) + (8 / 25);
-            const totalReduction = 1 - (part1 - part2);
+            // 指定された数式に基づくダメージ軽減計算
+            const reductionFactor = (defense / 5 + defense - damage / (2 + toughness / 4)) / 25;
 
-            // 実際のダメージ計算
-            const reducedDamage = damage * totalReduction;
+            // ダメージ軽減後の実際のダメージを計算
+            const reducedDamage = damage * (1 - reductionFactor);
 
             // 結果を表示
             document.getElementById("result").innerText = `結果: 実際のダメージは ${reducedDamage.toFixed(2)} です。`;
