@@ -57,7 +57,7 @@
         経験値: <span id="experience">0</span>
     </div>
     <div>
-        武器切り替え: 
+        武器選択: 
         <select id="weapon-select">
             <option value="fist">素手</option>
         </select>
@@ -91,12 +91,13 @@
                 "damage": 8, "cooldown": 1250, "price": 15, "requiredExp": 15, 
                 "poison": { "duration": 3000, "damagePerSecond": 2 }
             },
-            "spider_sword": { 
+            "spider-sword": { 
                 "damage": 5.95, "cooldown": 625, "price": 20, "requiredExp": 60, 
-                "poison": { "duration": 2400, "damagePerSecond": 4 }
+                "poison": { "duration": 5000, "damagePerSecond": 3 }
             }
         };
 
+        let buyWeaponList = ["stone-sword", "grade-blade", "poison-spear", "spider-sword"];
         let availableWeapons = ["fist"];
 
         meatElement.addEventListener('click', attackMeat);
@@ -124,7 +125,7 @@
             if (meatHp <= 0) {
                 meatHp = 20;
                 meatPoints += 1;
-                experience += 2; // 経験値を2獲得
+                experience += 2; 
                 meatPointsElement.textContent = meatPoints;
                 experienceElement.textContent = experience;
                 unlockWeapons();
@@ -140,7 +141,7 @@
         function showDamage(damage) {
             const damageElement = document.createElement('div');
             damageElement.classList.add('damage');
-            damageElement.textContent = `-${damage}`;
+            damageElement.textContent = `-`;  // ダメージ表示は隠す
             damageOutputElement.appendChild(damageElement);
             
             setTimeout(() => {
@@ -156,7 +157,7 @@
         }
 
         function unlockWeapons() {
-            for (const weaponKey in weapons) {
+            for (const weaponKey of buyWeaponList) {
                 const weapon = weapons[weaponKey];
                 if (experience >= weapon.requiredExp && !availableWeapons.includes(weaponKey)) {
                     availableWeapons.push(weaponKey);
