@@ -57,9 +57,15 @@
         経験値: <span id="experience">0</span>
     </div>
     <div>
-        武器選択: 
+        使用武器選択: 
         <select id="weapon-select">
             <option value="fist">素手</option>
+        </select>
+    </div>
+    <div>
+        購入武器選択: 
+        <select id="buy-weapon-select">
+            <option value="">購入可能な武器</option>
         </select>
     </div>
     <button id="buy-weapon-button">武器を購入</button>
@@ -80,6 +86,7 @@
         const experienceElement = document.getElementById('experience');
         const damageOutputElement = document.getElementById('damage-output');
         const weaponSelect = document.getElementById('weapon-select');
+        const buyWeaponSelect = document.getElementById('buy-weapon-select');
         const sellButton = document.getElementById('sell-button');
         const buyWeaponButton = document.getElementById('buy-weapon-button');
 
@@ -160,23 +167,26 @@
             for (const weaponKey of buyWeaponList) {
                 const weapon = weapons[weaponKey];
                 if (experience >= weapon.requiredExp && !availableWeapons.includes(weaponKey)) {
-                    availableWeapons.push(weaponKey);
                     const option = document.createElement('option');
                     option.value = weaponKey;
                     option.text = weaponKey;
-                    weaponSelect.add(option);
+                    buyWeaponSelect.add(option);
                 }
             }
         }
 
         function buyWeapon() {
-            const selectedWeapon = weaponSelect.value;
+            const selectedWeapon = buyWeaponSelect.value;
             const weapon = weapons[selectedWeapon];
             if (coins >= weapon.price && !availableWeapons.includes(selectedWeapon)) {
                 coins -= weapon.price;
                 coinsElement.textContent = coins;
                 availableWeapons.push(selectedWeapon);
                 alert(`${selectedWeapon} を購入しました！`);
+                const option = document.createElement('option');
+                option.value = selectedWeapon;
+                option.text = selectedWeapon;
+                weaponSelect.add(option);
             } else {
                 alert('玉が足りないか、既に購入済みです。');
             }
