@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>肉狩りゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #meat {
+            width: 0;
+            height: 0;
+            border-left: 50px solid transparent;
+            border-right: 50px solid transparent;
+            border-bottom: 100px solid pink;
+            display: inline-block;
+            position: relative;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        #meat:after {
+            content: '';
+            position: absolute;
+            top: 100px;
+            left: -50px;
+            width: 0;
+            height: 0;
+            border-left: 50px solid transparent;
+            border-right: 50px solid transparent;
+            border-top: 100px solid pink;
+        }
+        .damage {
+            color: red;
+            font-weight: bold;
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>肉狩りゲーム</h1>
+    <div id="meat">肉</div>
+    <div>肉 HP: <span id="meat-hp">20</span></div>
+    <div id="damage-output"></div>
+    <button id="sell-button">肉ポイントを玉に変換</button>
+    <div>
+        肉ポイント: <span id="meat-points">0</span><br>
+        玉: <span id="coins">0</span><br>
+        経験値: <span id="experience">0</span>
+    </div>
+    <div>
+        武器切り替え: 
+        <select id="weapon-select">
+            <option value="fist">素手</option>
+        </select>
+    </div>
+    <button id="buy-weapon-button">武器を購入</button>
+
+    <script>
+        let meatHp = 20;
+        let meatPoints = 0;
+        let coins = 0;
+        let experience = 0;
+        let lastAttackTime = 0;
+        let currentWeapon = 'fist';
+        let attackCooldown = false;
+
+        const meatElement = document.getElementById('meat');
+        const meatHpElement = document.getElementById('meat-hp');
+        const meatPointsElement = document.getElementById('meat-points');
+        const coinsElement = document.getElementById('coins');
+        const experienceElement = document.getElementById('experience');
+        const damageOutputElement = document.getElementById('damage-output');
+        const weaponSelect = document.getElementById('weapon-select');
+        const sellButton = document.getElementById('sell-button');
+        const buyWeaponButton = document.getElementById('buy-weapon-button');
+
+        const weapons = {
+            "fist": { "damage": 3, "cooldown": 1000 },
+            "stone-sword": { "damage": 7, "cooldown": 500, "price": 5, "requiredExp": 0 },
+            "grade-blade": { "damage": 10, "cooldown": 1310, "price": 10, "requiredExp": 10 },
+            "poison-spear": { 
+                "damage": 8, "cooldown": 1250, "price": 15, "requiredExp": 15, 
+                "poison": { "duration": 3000, "damagePerSecond": 2 }
+            },
+           "spider_sword": { 
+                "damage": 5.95, "cooldown": 625, "price": 20, "requiredExp": 60, 
+                "poison": { "duration": 2400, "damagePerSecond": 4 }
+            }
+        };
+
+        let availableWeapons = ["fist"];
+
+        meatElement.addEventListener('click', attackMeat);
+        sellButton.addEventListener('click', sellMeatPoints);
+        buyWeaponButton.addEventListener('click', buyWeapon);
+        weaponSelect.addEventListener('change', (e) => {
+            currentWeapon = e.target.value;
+        });
+
+        function attackMeat() {
+            const currentTime = new Date().getTime();
+            const timeDifference = currentTime - lastAttackTime;
+            const weapon = weapons[currentWeapon];
+
+            let damage = weapon.damage;
+
+            if (timeDifference < weapon.cooldown) {
+                damage = Math.max(1, damage * (timeDifference / weapon.cooldown));
+            }
+
+            meatHp -= damage;
+            meatHpElement.textContent = Math.max(0, Math.floor(meatHp));
+            showDamage(Math.floor(damage));
+
+            if (meatHp <= 0) {
+                meatHp = 20;
+                meatPoints += 1;
+                experience += 2; // 経験値を2獲得
+                meatPointsElement.textContent = meatPoints;
+                experienceElement.textContent = experience;
+                unlockWeapons();
+            }
+
+            lastAttackTime = currentTime;
+
+            if (weapon.poison) {
+                applyPoison();
+            }
+        }
+
+        function showDamage(damage) {
+            const damageElement = document.createElement('div');
+            damageElement.classList.add('damage');
+            damageElement.textContent = `-${damage}`;
+            damageOutputElement.appendChild(damageElement);
+            
+            setTimeout(() => {
+                damageElement.remove();
+            }, 500);
+        }
+
+        function sellMeatPoints() {
+            coins += meatPoints;
+            meatPoints = 0;
+            meatPointsElement.textContent = meatPoints;
+            coinsElement.textContent = coins;
+        }
+
+        function unlockWeapons() {
+            for (const weaponKey in weapons) {
+                const weapon = weapons[weaponKey];
+                if (experience >= weapon.requiredExp && !availableWeapons.includes(weaponKey)) {
+                    availableWeapons.push(weaponKey);
+                    const option = document.createElement('option');
+                    option.value = weaponKey;
+                    option.text = weaponKey;
+                    weaponSelect.add(option);
+                }
+            }
+        }
+
+        function buyWeapon() {
+            const selectedWeapon = weaponSelect.value;
+            const weapon = weapons[selectedWeapon];
+            if (coins >= weapon.price && !availableWeapons.includes(selectedWeapon)) {
+                coins -= weapon.price;
+                coinsElement.textContent = coins;
+                availableWeapons.push(selectedWeapon);
+                alert(`${selectedWeapon} を購入しました！`);
+            } else {
+                alert('玉が足りないか、既に購入済みです。');
+            }
+        }
+
+        function applyPoison() {
+            const poison = weapons[currentWeapon].poison;
+            let poisonInterval = setInterval(() => {
+                meatHp -= poison.damagePerSecond;
+                meatHpElement.textContent = Math.max(0, Math.floor(meatHp));
+                if (meatHp <= 0) clearInterval(poisonInterval);
+            }, 1000);
+
+            setTimeout(() => clearInterval(poisonInterval), poison.duration);
+        }
+    </script>
+</body>
+</html>
