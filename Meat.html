@@ -69,9 +69,25 @@
         </select>
     </div>
     <button id="buy-weapon-button">武器を購入</button>
+    <div>
+        敵の種類選択:
+        <select id="meat-select">
+            <option value="normal-meat">通常の肉</option>
+            <option value="tough-meat">固い肉</option>
+            <option value="fish-meat">魚肉</option>
+        </select>
+    </div>
 
     <script>
-        let meatHp = 20;
+        // 肉のデータ
+        const meatData = {
+            "normal-meat": { "hp": 20, "exp": 2, "defense": 5, "toughness": 2 },
+            "tough-meat": { "hp": 40, "exp": 5, "defense": 20, "toughness": 5 },
+            "fish-meat": { "hp": 15, "exp": 10, "defense": 2, "toughness": 1 }
+        };
+
+        let currentMeat = "normal-meat";
+        let meatHp = meatData[currentMeat].hp;
         let meatPoints = 0;
         let coins = 0;
         let experience = 0;
@@ -89,6 +105,7 @@
         const buyWeaponSelect = document.getElementById('buy-weapon-select');
         const sellButton = document.getElementById('sell-button');
         const buyWeaponButton = document.getElementById('buy-weapon-button');
+        const meatSelect = document.getElementById('meat-select');
 
         const weapons = {
             "fist": { "damage": 3, "cooldown": 1000 },
@@ -113,6 +130,11 @@
         weaponSelect.addEventListener('change', (e) => {
             currentWeapon = e.target.value;
         });
+        meatSelect.addEventListener('change', (e) => {
+            currentMeat = e.target.value;
+            meatHp = meatData[currentMeat].hp;
+            meatHpElement.textContent = meatHp;
+        });
 
         function attackMeat() {
             const currentTime = new Date().getTime();
@@ -125,14 +147,19 @@
                 damage = Math.max(1, damage * (timeDifference / weapon.cooldown));
             }
 
+            // 防御力を考慮したダメージ計算
+            const meatDefense = meatData[currentMeat].defense;
+            const meatToughness = meatData[currentMeat].toughness;
+            damage = calculateDamage(damage, meatDefense, meatToughness);
+
             meatHp -= damage;
             meatHpElement.textContent = Math.max(0, Math.floor(meatHp));
             showDamage(Math.floor(damage));
 
             if (meatHp <= 0) {
-                meatHp = 20;
+                meatHp = meatData[currentMeat].hp;
                 meatPoints += 1;
-                experience += 2; 
+                experience += meatData[currentMeat].exp;
                 meatPointsElement.textContent = meatPoints;
                 experienceElement.textContent = experience;
                 unlockWeapons();
@@ -145,10 +172,15 @@
             }
         }
 
+        function calculateDamage(damage, defense, toughness) {
+            const reducedDamage = damage - (defense / 25 - (toughness - damage / 4));
+            return Math.max(1, Math.min(damage, reducedDamage));
+        }
+
         function showDamage(damage) {
             const damageElement = document.createElement('div');
             damageElement.classList.add('damage');
-            damageElement.textContent = `-`;  // ダメージ表示は隠す
+            damageElement.textContent = `${damage}`;
             damageOutputElement.appendChild(damageElement);
             
             setTimeout(() => {
@@ -182,25 +214,14 @@
                 coins -= weapon.price;
                 coinsElement.textContent = coins;
                 availableWeapons.push(selectedWeapon);
-                alert(`${selectedWeapon} を購入しました！`);
                 const option = document.createElement('option');
                 option.value = selectedWeapon;
                 option.text = selectedWeapon;
                 weaponSelect.add(option);
+                alert(`${selectedWeapon} を購入しました！`);
             } else {
-                alert('玉が足りないか、既に購入済みです。');
+                alert("購入するための玉が足りません！");
             }
-        }
-
-        function applyPoison() {
-            const poison = weapons[currentWeapon].poison;
-            let poisonInterval = setInterval(() => {
-                meatHp -= poison.damagePerSecond;
-                meatHpElement.textContent = Math.max(0, Math.floor(meatHp));
-                if (meatHp <= 0) clearInterval(poisonInterval);
-            }, 1000);
-
-            setTimeout(() => clearInterval(poisonInterval), poison.duration);
         }
     </script>
 </body>
