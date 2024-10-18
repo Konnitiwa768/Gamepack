@@ -8,7 +8,7 @@ https://sakalt.github.io/Gamepack/shogi.html
 https://sakalt.github.io/Gamepack/shogi2.html
 https://sakalt.github.io/Gamepack/5.html
 https://sakalt.github.io/Gamepack/Bougyo.html
-
+https://sakalt.github.io/Gamepack/meat.html
 https://sakalt.github.io/Gamepack/uran.png
 .btn-text-3d {
   text-decoration: none;
