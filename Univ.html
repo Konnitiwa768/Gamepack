@@ -148,7 +148,7 @@
                         if (otherPlanet !== planet && !otherPlanet.isStatic) {
                             const distance = Matter.Vector.magnitude(Matter.Vector.sub(planet.position, otherPlanet.position));
                             if (distance < 500) { // 引力の範囲を拡大
-                                const forceMagnitude = 0.0002 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
+                                const forceMagnitude = 0.004 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
                                 const force = Matter.Vector.normalise(Matter.Vector.sub(planet.position, otherPlanet.position));
                                 Matter.Body.applyForce(otherPlanet, otherPlanet.position, Matter.Vector.mult(force, forceMagnitude));
                             }
@@ -164,7 +164,7 @@
                         if (otherPlanet !== planet && !otherPlanet.isStatic) {
                             const distance = Matter.Vector.magnitude(Matter.Vector.sub(planet.position, otherPlanet.position));
                             if (distance < 500) { // 引力の範囲を拡大
-                                const forceMagnitude = 0.0001 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
+                                const forceMagnitude = 0.0035 * planet.mass * otherPlanet.mass / Math.pow(distance, 2);
                                 const force = Matter.Vector.normalise(Matter.Vector.sub(planet.position, otherPlanet.position));
                                 Matter.Body.applyForce(otherPlanet, otherPlanet.position, Matter.Vector.mult(force, forceMagnitude));
                             }
